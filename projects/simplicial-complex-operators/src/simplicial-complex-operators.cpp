@@ -260,7 +260,36 @@ MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
 MeshSubset SimplicialComplexOperators::closure(const MeshSubset& subset) const {
 
     // TODO
-    return subset; // placeholder
+    // The closure of S is the smallest simplicial subcomplex that contains each simplex in S.
+    // The closure of a face is the is the face, its edges, and vertices.
+    // The closure of an edge is the edge and its vertices.
+    // The closure of a vertex is the vertex itself.
+    
+    // we'll start by just copying the subset's vertices, edges, and faces
+    MeshSubset closureSubset = subset.deepCopy();
+    
+    // Then we'll iterate over all the edges in the subset and add their vertices
+    for (size_t eIndex : subset.edges) {
+        Edge e = mesh->edge(eIndex);
+        Vertex v0 = e.firstVertex();
+        Vertex v1 = e.secondVertex();
+        closureSubset.vertices.insert(v0.getIndex());
+        closureSubset.vertices.insert(v1.getIndex());
+    }
+
+    // Next we'll iterate over all the faces in the subset and add their edges and vertices
+    for (size_t fIndex : subset.faces) {
+        Face f = mesh->face(fIndex);
+        for (Edge e : f.adjacentEdges()) {
+            closureSubset.edges.insert(e.getIndex());
+            Vertex v0 = e.firstVertex();
+            Vertex v1 = e.secondVertex();
+            closureSubset.vertices.insert(v0.getIndex());
+            closureSubset.vertices.insert(v1.getIndex());
+        }
+    }
+    
+    return closureSubset;
 }
 
 /*
