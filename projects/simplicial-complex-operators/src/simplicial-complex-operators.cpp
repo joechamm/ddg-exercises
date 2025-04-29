@@ -301,7 +301,37 @@ MeshSubset SimplicialComplexOperators::closure(const MeshSubset& subset) const {
 MeshSubset SimplicialComplexOperators::link(const MeshSubset& subset) const {
 
     // TODO
-    return subset; // placeholder
+    // The link of S is the set theoretic difference of the closure of the star of S minus the star of the closure of S
+    // Lk(S) = Cl(St(S)) \ St(St(Cl(S)))
+    // Make sure that subset is not empty
+    try {
+        if (subset.vertices.empty() && subset.edges.empty() && subset.faces.empty()) {
+            throw std::runtime_error("Error: Subset is empty.");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return subset;
+    }
+    
+    // start by getting the star and closure of S
+    MeshSubset stS = star(subset); // St(S)
+    MeshSubset clS = closure(subset); // Cl(S)
+    // then get the closure of the star
+    MeshSubset clStS = closure(stS); // Cl(St(S))
+    // and the star of the closure
+    MeshSubset stClS = star(clS);     // St(Cl(S))
+    
+    // declare the link subset
+    MeshSubset linkS;
+    // use the set difference of the closure of the star and the star of the closure only the vertices, edges, and faces
+    std::set_difference(clStS.vertices.begin(), clStS.vertices.end(), stClS.vertices.begin(), stClS.vertices.end(),
+                        std::inserter(linkS.vertices, linkS.vertices.end()));
+    std::set_difference(clStS.edges.begin(), clStS.edges.end(), stClS.edges.begin(), stClS.edges.end(),
+                        std::inserter(linkS.edges, linkS.edges.end()));
+    std::set_difference(clStS.faces.begin(), clStS.faces.end(), stClS.faces.begin(), stClS.faces.end(),
+                        std::inserter(linkS.faces, linkS.faces.end()));
+
+    return linkS; 
 }
 
 /*
@@ -313,6 +343,20 @@ MeshSubset SimplicialComplexOperators::link(const MeshSubset& subset) const {
 bool SimplicialComplexOperators::isComplex(const MeshSubset& subset) const {
 
     // TODO
+    // Check if subset is empty
+    if (subset.vertices.empty() && subset.edges.empty() && subset.faces.empty()) {
+        return false; // The subset is empty
+    }
+    // A simplicial complex is a set of simplices such that every face of a simplex in the set is also in the set.
+    // We'll use the closure operator to check if the subset is a simplicial complex.
+    // If the closure of the subset is equal to the subset, then it is a simplicial complex.
+    MeshSubset closureSubset = closure(subset);
+    // Check if the closure of the subset is equal to the subset
+    if (closureSubset.vertices == subset.vertices && closureSubset.edges == subset.edges &&
+        closureSubset.faces == subset.faces) {
+        return true; // The subset is a simplicial complex
+    }
+
     return false; // placeholder
 }
 
@@ -326,7 +370,129 @@ bool SimplicialComplexOperators::isComplex(const MeshSubset& subset) const {
 int SimplicialComplexOperators::isPureComplex(const MeshSubset& subset) const {
 
     // TODO
-    return -1; // placeholder
+    // Check if subset is empty
+    if (subset.vertices.empty() && subset.edges.empty() && subset.faces.empty()) {
+        return -1; // The subset is empty
+    }
+    // A complex K is a pure k-simplicial complex if every simplex in K is contained in some simplex of degree k (possibly itself).
+    // Let's grab the closure first and check and if the subset if a complex.
+    // 
+    MeshSubset closureSubset = closure(subset);
+    // Check if the closure of the subset is equal to the subset
+    if (closureSubset.vertices != subset.vertices || closureSubset.edges != subset.edges ||
+        closureSubset.faces != subset.faces) {
+        return -1; // The subset is not a simplicial complex
+    }
+
+    if (!subset.faces.empty()) {
+        // Check if every edge is contained in a face in the subset.
+        for (size_t eIndex : subset.edges) {
+            // iterate over the eIndex column of A1. The non-zero entries in this column correspond to the faces incident to the edge
+            for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
+                // the row of our non-zero element is the index of a face containing the edge
+                size_t fIndex = it1.row();
+                // check if the face is contained in the subset
+                if (subset.faces.find(fIndex) == subset.faces.end()) {
+                    return -1; // The subset is not a pure complex
+                }
+            }
+        }
+
+        // Now check if every vertex is contained in an edge in the subset
+        for (size_t vIndex : subset.vertices) {
+            // iterate over the vIndex column of A0. The non-zero entries in this column correspond to the edges
+            // incident to the vertex
+            for (SparseMatrix<size_t>::InnerIterator it0(A0, vIndex); it0; ++it0) {
+                // the row of our non-zero element is the index of an edge containing the vertex
+                size_t eIndex = it0.row();
+                // check if the edge is contained in the subset
+                if (subset.edges.find(eIndex) == subset.edges.end()) {
+                    return -1; // The subset is not a pure complex
+                }
+            }
+        }
+
+        // Every edge is contained in a face in the subset, and every vertex is contained in an edge in the subset.
+        // Degree of the complex is 2
+        return 2;
+    }
+
+    if (!subset.edges.empty()) {
+        // Check if every vertex is contained in an edge in the subset
+        for (size_t vIndex : subset.vertices) {
+            // iterate over the vIndex column of A0. The non-zero entries in this column correspond to the edges
+            // incident to the vertex
+            for (SparseMatrix<size_t>::InnerIterator it0(A0, vIndex); it0; ++it0) {
+                // the row of our non-zero element is the index of an edge containing the vertex
+                size_t eIndex = it0.row();
+                // check if the edge is contained in the subset
+                if (subset.edges.find(eIndex) == subset.edges.end()) {
+                    return -1; // The subset is not a pure complex
+                }
+            }
+        }
+        // Every vertex is contained in an edge in the subset.
+        // Degree of the complex is 1
+        return 1;
+    }
+
+    // If we reach here, then the subset is a pure complex of degree 0
+    return 0;
+
+    //// now add the faces that contain this edge
+    //for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
+    //    // the row of our non-zero element is the index of a face containing the edge
+    //    size_t fIndex = it1.row();
+    //    starFaces.insert(fIndex);
+    //}
+
+    ////if (!subset.faces.empty()) { // degree = 2
+    ////    // Check if every edge is contained in a face in the subset.
+    ////    // If we take a vector V of dimension |E|, with 1 in the ith component if edge i is in S and a 0 otherwise, we can multiply V by A1 since A1 contains |E| columns.
+    ////    // The result will be a vector of dimension |F|, with the jth component equal to the number of edges in S contained in the jth face. 
+    ////    Vector<size_t> edgeVector = buildEdgeVector(subset);
+    ////    Vector<size_t> faceIncidentVector = A1 * edgeVector; // A1 is the face-edge adjacency matrix
+    ////    // For each face f with index j in our complex, check the jth component of the faceIncidentVector. 
+
+    ////}
+
+
+    //int degree = 2;
+    //// If subset faces is empty, then the degree is 1, and if edges is empty and vertices is non-empty, then the degree
+    //// is 0.
+    //if (subset.faces.empty()) {
+    //    if (subset.edges.empty()) {
+    //        // degree is 0 since we already checked that the subset is not empty
+    //        degree = 0;
+    //    } else {
+    //        // degree is 1 since we already checked that the subset is not empty
+    //        degree = 1;
+    //    }
+    //}
+
+    //// Check if the subset is a pure complex.
+    //// If degree = 2, then we check if each vertex is contained in an edge in subset, and if each edge is contained in a face
+    //// in subset.
+    //if (degree == 2) {
+    //    for (size_t vIndex : subset.vertices) {
+    //        // check if the vertex is contained in an edge in the subset
+    //        if (subset.edges.find(vIndex) == subset.edges.end()) {
+    //            return -1; // The subset is not a pure complex
+    //        }
+    //    }
+    //    for (size_t eIndex : subset.edges) {
+    //        // check if the edge is contained in a face in the subset
+    //        if (subset.faces.find(eIndex) == subset.faces.end()) {
+    //            return -1; // The subset is not a pure complex
+    //        }
+    //    }
+    //} 
+
+    //// If degree = 1, we just need to check if each vertex is contained in an edge in subset.
+
+
+
+    //return degree; 
 }
 
 /*
