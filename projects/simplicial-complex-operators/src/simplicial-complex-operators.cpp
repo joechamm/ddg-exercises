@@ -301,9 +301,9 @@ MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
     }
 
     // Debugging - print star
-    star.printVertices();
-    star.printEdges();
-    star.printFaces();
+    //star.printVertices();
+    //star.printEdges();
+    //star.printFaces();
  
     return star; // Return the star of the subset
 }
