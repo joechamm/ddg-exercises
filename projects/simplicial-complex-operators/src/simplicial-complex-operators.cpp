@@ -130,14 +130,14 @@ SparseMatrix<size_t> SimplicialComplexOperators::buildFaceEdgeAdjacencyMatrix() 
 Vector<size_t> SimplicialComplexOperators::buildVertexVector(const MeshSubset& subset) const {
 
     // TODO
-    Vector<size_t> vertexVector(mesh->nVertices());
+    size_t numVerts = mesh->nVertices();
+    Vector<size_t> vertexVector(numVerts); // Create a vector of size |V|, where |V| = # of vertices in mesh   
+        
     vertexVector.setZero();
-    for (Vertex v : mesh->vertices()) {
-
-        if (subset.vertices.find(v.getIndex()) != subset.vertices.end()) {
-            vertexVector[v.getIndex()] = 1; // Mark the vertex as selected
-        }
+    for (size_t v : subset.vertices) {
+        vertexVector[v] = 1; // Mark the vertex as selected
     }
+
     return vertexVector;
 }
 
@@ -150,12 +150,12 @@ Vector<size_t> SimplicialComplexOperators::buildVertexVector(const MeshSubset& s
 Vector<size_t> SimplicialComplexOperators::buildEdgeVector(const MeshSubset& subset) const {
 
     // TODO
-    Vector<size_t> edgeVector(mesh->nEdges());
+    size_t numEdges = mesh->nEdges();
+    Vector<size_t> edgeVector(numEdges); // Create a vector of size |E|, where |E| = # of edges in mesh
+
     edgeVector.setZero();
-    for (Edge e : mesh->edges()) {
-        if (subset.edges.find(e.getIndex()) != subset.edges.end()) {
-            edgeVector[e.getIndex()] = 1; // Mark the edge as selected
-        }
+    for (size_t e : subset.edges) {
+        edgeVector[e] = 1; // Mark the edge as selected
     }
 
     return edgeVector;
@@ -170,12 +170,12 @@ Vector<size_t> SimplicialComplexOperators::buildEdgeVector(const MeshSubset& sub
 Vector<size_t> SimplicialComplexOperators::buildFaceVector(const MeshSubset& subset) const {
 
     // TODO
-    Vector<size_t> faceVector(mesh->nFaces());
+    size_t numFaces = mesh->nFaces();
+    Vector<size_t> faceVector(numFaces);
     faceVector.setZero();
-    for (Face f : mesh->faces()) {
-        if (subset.faces.find(f.getIndex()) != subset.faces.end()) {
-            faceVector[f.getIndex()] = 1; // Mark the face as selected
-        }
+
+    for (size_t f : subset.faces) {
+        faceVector[f] = 1; // Mark the face as selected
     }
 
     return faceVector;
@@ -187,80 +187,114 @@ Vector<size_t> SimplicialComplexOperators::buildFaceVector(const MeshSubset& sub
  * Input: A MeshSubset object containing the indices of the currently active vertices, edges, and faces, respectively.
  * Returns: The star of the given subset.
  */
+//MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
+//
+//    // TODO
+//    // Note: The star of a vertex is the set of all edges and faces that are incident to it.
+//    // The star of an edge is the set of all faces that are incident to it.
+//    // The star of a face is the set of all edges and vertices that are incident to it.
+//    // The star of a subset of simplices is the union of the stars of each simplex in the subset.
+//    // Note: The star of a vertex is the set of all edges and faces that are incident to it.
+//    // Check if A0 or A1 has non-zero entries, then check if the subset is empty
+//    try {
+//        if (A0.nonZeros() == 0) {
+//            throw std::runtime_error("Error: Adjacency matrix A0 is empty.");
+//        } else if (A1.nonZeros() == 0) {
+//            throw std::runtime_error("Error: Adjacency matrix A1 is empty.");
+//        }
+//        if (subset.vertices.empty() && subset.edges.empty() && subset.faces.empty()) {
+//            throw std::runtime_error("Error: Subset is empty.");
+//        }
+//    } catch (const std::exception& e) {
+//        std::cerr << e.what() << std::endl;
+//        return subset; // placeholder
+//    }
+//
+//    // first gather the star of the vertices in the subset
+//    // Use the adjacency matrix A0 to get the edges associated with the vertices in the subset
+//    // A0 is Column-major, so we'll to traverse over the columns of A0
+//    // The cth column of A0 corresponds to the cth vertex, and the rth row of A0 corresponds to the rth edge
+//    // The non-zero entries in the cth column of A0 correspond to the edges incident to the cth vertex
+//
+//    // The star of the subset is the union of the stars of each simplex in the subset
+//    std::set<size_t> starVertices;
+//    std::set<size_t> starEdges;
+//    std::set<size_t> starFaces;
+//
+//    // First we'll iterate over all the vertices in the subset, and use the adjacency matrices A0 and A1 to get the
+//    // edges and faces.
+//    for (size_t vIndex : subset.vertices) {
+//        starVertices.insert(vIndex);
+//        // iterate over the vIndex column of A0. The non-zero entries in this column correspond to the edges incident to
+//        // the vertex
+//        for (SparseMatrix<size_t>::InnerIterator it0(A0, vIndex); it0; ++it0) {
+//            // the row of our non-zero element is the index of an edge containing the vIndex vertex
+//            size_t eIndex = it0.row();
+//            starEdges.insert(eIndex);
+//            // now add the faces that contain this edge
+//            for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
+//                // the row of our non-zero element is the index of a face containing the edge
+//                size_t fIndex = it1.row();
+//                starFaces.insert(fIndex);
+//            }
+//        }
+//    }
+//
+//    // Next we'll iterate over all the edges in the subset, and use the adjacency matrix A1 to get the faces
+//    for (size_t eIndex : subset.edges) {
+//        starEdges.insert(eIndex);
+//        for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
+//
+//            // the row of our non-zero element is the index of a face containing the edge
+//            size_t fIndex = it1.row();
+//            starFaces.insert(fIndex);
+//        }
+//    }
+//
+//    // Finally, we'll just iterate over all the faces in the subset and add them to the star
+//    for (size_t fIndex : subset.faces) {
+//        starFaces.insert(fIndex);
+//    }
+//
+//    MeshSubset starSubset(starVertices, starEdges, starFaces);
+//
+//    return starSubset;
+//}
 MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
-
-    // TODO
-    // Note: The star of a vertex is the set of all edges and faces that are incident to it.
-    // The star of an edge is the set of all faces that are incident to it.
-    // The star of a face is the set of all edges and vertices that are incident to it.
-    // The star of a subset of simplices is the union of the stars of each simplex in the subset.
-    // Note: The star of a vertex is the set of all edges and faces that are incident to it.
-    // Check if A0 or A1 has non-zero entries, then check if the subset is empty
-    try {
-        if (A0.nonZeros() == 0) {
-            throw std::runtime_error("Error: Adjacency matrix A0 is empty.");
-        } else if (A1.nonZeros() == 0) {
-            throw std::runtime_error("Error: Adjacency matrix A1 is empty.");
-        }
-        if (subset.vertices.empty() && subset.edges.empty() && subset.faces.empty()) {
-            throw std::runtime_error("Error: Subset is empty.");
-        }
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return subset; // placeholder
-    }
-
-    // first gather the star of the vertices in the subset
-    // Use the adjacency matrix A0 to get the edges associated with the vertices in the subset
-    // A0 is Column-major, so we'll to traverse over the columns of A0
-    // The cth column of A0 corresponds to the cth vertex, and the rth row of A0 corresponds to the rth edge
-    // The non-zero entries in the cth column of A0 correspond to the edges incident to the cth vertex
-
-    // The star of the subset is the union of the stars of each simplex in the subset
-    std::set<size_t> starVertices;
-    std::set<size_t> starEdges;
-    std::set<size_t> starFaces;
-
-    // First we'll iterate over all the vertices in the subset, and use the adjacency matrices A0 and A1 to get the
-    // edges and faces.
-    for (size_t vIndex : subset.vertices) {
-        starVertices.insert(vIndex);
-        // iterate over the vIndex column of A0. The non-zero entries in this column correspond to the edges incident to
-        // the vertex
-        for (SparseMatrix<size_t>::InnerIterator it0(A0, vIndex); it0; ++it0) {
-            // the row of our non-zero element is the index of an edge containing the vIndex vertex
-            size_t eIndex = it0.row();
-            starEdges.insert(eIndex);
-            // now add the faces that contain this edge
-            for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
-                // the row of our non-zero element is the index of a face containing the edge
-                size_t fIndex = it1.row();
-                starFaces.insert(fIndex);
-            }
+    // Start by copying the subset. We'll add the star vertices, edges, and faces to this copy.
+    MeshSubset star = subset.deepCopy();
+    // Get some useful information about the mesh.
+    size_t numVerts = mesh->nVertices();
+    size_t numEdges = mesh->nEdges();
+    size_t numFaces = mesh->nFaces();
+    // Build the vertex, edge, and face vectors for use in computing adjacency.
+    Vector<size_t> vertexVector = buildVertexVector(subset);
+    Vector<size_t> edgeVector = buildEdgeVector(subset);
+    Vector<size_t> faceVector = buildFaceVector(subset);
+    // Convert the vertices in subset S to an index vector we can multiply by A0 to get the edges that contain vertices
+    // in S. The resultant vector will be an n dimension vector, where n = |E|. The the ith component will be the number
+    // of vertices in S that are incident to the ith edge. We can then add the non-zero entries in this vector to the
+    // star edges.
+    Vector<size_t> edgeIncidentVector = A0 * vertexVector; // A0 is the vertex-edge adjacency matrix
+    // Iterate over the edgeIncidentVector and add the non-zero entries to the star edges
+    for (size_t i = 0; i < numEdges; i++) {
+        if (edgeIncidentVector[i] > 0) {
+            star.addEdge(i); // Add the edge to the star edges
         }
     }
-
-    // Next we'll iterate over all the edges in the subset, and use the adjacency matrix A1 to get the faces
-    for (size_t eIndex : subset.edges) {
-        starEdges.insert(eIndex);
-        for (SparseMatrix<size_t>::InnerIterator it1(A1, eIndex); it1; ++it1) {
-
-            // the row of our non-zero element is the index of a face containing the edge
-            size_t fIndex = it1.row();
-            starFaces.insert(fIndex);
+    // Now we can do the same for the faces. The resultant vector will be an n dimension vector, where n = |F|. The the
+    // ith component will be the number of edges in S that are incident to the ith face. We can then add the non-zero
+    // entries in this vector to the star faces.
+    Vector<size_t> faceIncidentVector = A1 * edgeVector; // A1 is the face-edge adjacency matrix
+    // Iterate over the faceIncidentVector and add the non-zero entries to the star faces
+    for (size_t i = 0; i < numFaces; i++) {
+        if (faceIncidentVector[i] > 0) {
+            star.addFace(i); // Add the face to the star faces
         }
     }
-
-    // Finally, we'll just iterate over all the faces in the subset and add them to the star
-    for (size_t fIndex : subset.faces) {
-        starFaces.insert(fIndex);
-    }
-
-    MeshSubset starSubset(starVertices, starEdges, starFaces);
-
-    return starSubset;
+ 
+    return star; // Return the star of the subset
 }
-
 
 /*
  * Compute the closure Cl(S) of the selected subset of simplices.
@@ -516,5 +550,18 @@ int SimplicialComplexOperators::isPureComplex(const MeshSubset& subset) const {
 MeshSubset SimplicialComplexOperators::boundary(const MeshSubset& subset) const {
 
     // TODO
+    // The boundary, bd(K'), of a pure k-subcomplex K' of simplicial complex K is the closure of the set of all simplices, s, that are proper faces of exactly one simplex of K'. 
+    
+    // First we'll check if subset  is a pure complex
+    int degree = isPureComplex(subset);
+    try {
+        if (degree == -1) {
+            throw std::runtime_error("Error: Subset is not a pure complex.");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return subset; // placeholder
+    }
+
     return subset; // placeholder
 }
