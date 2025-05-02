@@ -275,7 +275,12 @@ MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
     // in S. The resultant vector will be an n dimension vector, where n = |E|. The the ith component will be the number
     // of vertices in S that are incident to the ith edge. We can then add the non-zero entries in this vector to the
     // star edges.
-    Vector<size_t> edgeIncidentVector = A0 * vertexVector; // A0 is the vertex-edge adjacency matrix
+    //for (size_t i = 0; i < numVerts; ++i) {
+    //    star.addVertex(i); // Add the vertex to the star vertices
+    //}
+    //Vector<size_t> edgeIncidentVector = A0 * vertexVector + edgeVector; // A0 is the vertex-edge adjacency matrix
+    Vector<size_t> edgeIncidentVector = A0 * vertexVector;
+    
     // Iterate over the edgeIncidentVector and add the non-zero entries to the star edges
     for (size_t i = 0; i < numEdges; i++) {
         if (edgeIncidentVector[i] > 0) {
@@ -285,13 +290,20 @@ MeshSubset SimplicialComplexOperators::star(const MeshSubset& subset) const {
     // Now we can do the same for the faces. The resultant vector will be an n dimension vector, where n = |F|. The the
     // ith component will be the number of edges in S that are incident to the ith face. We can then add the non-zero
     // entries in this vector to the star faces.
-    Vector<size_t> faceIncidentVector = A1 * edgeVector; // A1 is the face-edge adjacency matrix
+ //   Vector<size_t> faceIncidentVector = A1 * edgeVector + faceVector; // A1 is the face-edge adjacency matrix
+    Vector<size_t> faceIncidentVector = A1 * (edgeIncidentVector + edgeVector);
+
     // Iterate over the faceIncidentVector and add the non-zero entries to the star faces
     for (size_t i = 0; i < numFaces; i++) {
         if (faceIncidentVector[i] > 0) {
             star.addFace(i); // Add the face to the star faces
         }
     }
+
+    // Debugging - print star
+    star.printVertices();
+    star.printEdges();
+    star.printFaces();
  
     return star; // Return the star of the subset
 }
@@ -382,6 +394,16 @@ MeshSubset SimplicialComplexOperators::closure(const MeshSubset& subset) const {
     return closureSubset; // Return the closure of the subset
 }
 
+/*
+ * Compute the closed star of the selected subset of simplices.
+ *
+ * Input: A MeshSubset object containing the indices of the currently active vertices, edges, and faces, respectively.
+ * Returns: The closure of the star of the given subset.
+ */ 
+MeshSubset SimplicialComplexOperators::closedStar(const MeshSubset& subset) const {
+    return closure(star(subset));   
+}
+
 
 /*
  * Compute the link Lk(S) of the selected subset of simplices.
@@ -427,7 +449,7 @@ MeshSubset SimplicialComplexOperators::closure(const MeshSubset& subset) const {
 MeshSubset SimplicialComplexOperators::link(const MeshSubset& subset) const {
     // The link of S is the set theoretic difference of the closure of the star of S minus the star of the closure of S.
     // We'll start with Cl(St(S)), then remove the star of the closure of S.
-    MeshSubset link = closure(star(subset)); // Cl(St(S))
+    MeshSubset link = closedStar(subset); // Cl(St(S))
     MeshSubset starClosure = star(closure(subset)); // St(Cl(S))
     // Now we'll remove the star of the closure from the link
     link.deleteSubset(starClosure);

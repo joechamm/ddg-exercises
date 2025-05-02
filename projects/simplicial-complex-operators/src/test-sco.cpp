@@ -300,6 +300,27 @@ TEST_F(SimplicialComplexOperatorsTest, star) {
     EXPECT_TRUE(A.equals(B)) << "\t\t You star does not square to itself";
 }
 
+//TEST_F(SimplicialComplexOperatorsTest, closedStar) {
+//
+//    std::cerr << "Testing closedStar()..." << std::endl;
+//    std::cerr << "\t closedStar of a vertex:" << std::endl;
+//    testReturnedMeshSubset("closedStar", {12311}, {}, {}, {12311}, {15481, 15482, 21057, 21529, 21530, 21586},
+//                           {6619, 9381, 9638, 9662, 10652, 19575});
+//    std::cerr << "\t Star of two vertices:" << std::endl;
+//    testReturnedMeshSubset("closedStar", {12311, 506}, {}, {}, {506, 12311},
+//                           {15481, 15482, 15516, 15517, 15599, 21057, 21529, 21530, 21531, 21586},
+//                           {6619, 6635, 6678, 9381, 9638, 9662, 10652, 10742, 19575});
+//    std::cerr << "\t closedStar of an edge:" << std::endl;
+//    testReturnedMeshSubset("closedStar", {}, {21531}, {}, {}, {21531}, {9638, 10742});
+//    std::cerr << "\t closedStar of a face:" << std::endl;
+//    testReturnedMeshSubset("closedStar", {}, {}, {841}, {}, {}, {841});
+//    std::cerr << "\t Squares to itself:" << std::endl;
+//    MeshSubset S = MeshSubset({1, 2, 3}, {1, 2, 3}, {1, 2, 3});
+//    MeshSubset A = SCO.closedStar(S);
+//    MeshSubset B = SCO.closedStar(A);
+//    EXPECT_TRUE(A.equals(B)) << "\t\t You closedStar does not square to itself";
+//}
+
 TEST_F(SimplicialComplexOperatorsTest, closure) {
 
     std::cerr << "Testing closure()..." << std::endl;

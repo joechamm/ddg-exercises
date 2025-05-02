@@ -52,4 +52,6 @@ class SimplicialComplexOperators {
     bool isComplex(const MeshSubset& subset) const;
     int isPureComplex(const MeshSubset& subset) const;
     MeshSubset boundary(const MeshSubset& subset) const;
+
+    MeshSubset closedStar(const MeshSubset& subset) const;
 };
