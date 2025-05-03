@@ -43,7 +43,18 @@ namespace surface {
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    // Since the area of a vertex is 1, the diagonal elements are equal to the dual area of the vertex.
+    size_t nVertices = mesh.nVertices();
+    std::vector<Eigen::Triplet<double>> triplets(nVertices);
+    for (size_t i = 0; i < nVertices; ++i) {
+        Vertex v = mesh.vertex(i);
+        double dualArea = barycentricDualArea(v);
+        triplets[i] = Eigen::Triplet<double>(i, i, dualArea);
+    }
+
+    SparseMatrix<double> hodgeStar0Form(nVertices, nVertices);
+    hodgeStar0Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar0Form;
 }
 
 /*
