@@ -66,7 +66,21 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    // The Hodge star operator on 1-forms is the cotangent Laplace operator, (1/2)(cot a + cot b)
+    // where a and b are the angles opposite the halfedge. We can use the cotan method on the halfedge
+    // to get cot a, and the twin operator on our halfedge allows us to get cot b.
+    size_t nEdges = mesh.nEdges();
+    std::vector<Eigen::Triplet<double>> triplets(nEdges);
+    for (size_t i = 0; i < nEdges; ++i) {
+        Edge e = mesh.edge(i);
+        double cotA = cotan(e.halfedge());
+        double cotB = cotan(e.halfedge().twin());
+        triplets[i] = Eigen::Triplet<double>(i, i, 0.5 * (cotA + cotB));
+    }
+
+    SparseMatrix<double> hodgeStar1Form(nEdges, nEdges);
+    hodgeStar1Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar1Form;
 }
 
 /*
@@ -78,7 +92,18 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    // The Hodge star operator on 2-forms is 1 over the area of the face.
+    size_t nFaces = mesh.nFaces();
+    std::vector<Eigen::Triplet<double>> triplets(nFaces);
+    for (size_t i = 0; i < nFaces; ++i) {
+        Face f = mesh.face(i);
+        double area = faceArea(f);
+        triplets[i] = Eigen::Triplet<double>(i, i, 1.0 / area);
+    }
+
+    SparseMatrix<double> hodgeStar2Form(nFaces, nFaces);
+    hodgeStar2Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar2Form;
 }
 
 /*
@@ -90,7 +115,23 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    // The exterior derivative on 0-forms is an n x m matrix, where n is the number of edges and m is the number of
+    // vertices. Each row corresponds to an edge, and each column corresponds to a vertex. The entries are 1 if the
+    // vertex is the head of the edge, -1 if it is the tail of the edge, and 0 otherwise.
+    size_t nEdges = mesh.nEdges();
+    size_t nVertices = mesh.nVertices();
+    std::vector<Eigen::Triplet<double>> triplets;
+    for (size_t i = 0; i < nEdges; ++i) {
+        Halfedge he = mesh.edge(i).halfedge();
+        Vertex head = he.tipVertex();
+        Vertex tail = he.tailVertex();
+        triplets.push_back(Eigen::Triplet<double>(i, head.getIndex(), 1.0));
+        triplets.push_back(Eigen::Triplet<double>(i, tail.getIndex(), -1.0));        
+    }
+
+    SparseMatrix<double> exteriorDerivative0Form(nEdges, nVertices);
+    exteriorDerivative0Form.setFromTriplets(triplets.begin(), triplets.end());
+    return exteriorDerivative0Form;
 }
 
 /*
@@ -102,7 +143,23 @@ SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() cons
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative1Form() const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    // The exterior derivative on 1-forms is an m x n matrix, where m is the number of faces and n is the number of
+    // edges. Each row corresponds to a face, and each column corresponds to an edge. The entries are 1 if the face is
+    // oriented in the same direction as the edge, -1 if it is oriented in the opposite direction, and 0 otherwise.
+    size_t nFaces = mesh.nFaces();
+    size_t nEdges = mesh.nEdges();
+    std::vector<Eigen::Triplet<double>> triplets;
+    for (size_t i = 0; i < nFaces; ++i) {
+        Face f = mesh.face(i);        
+        for (Halfedge he : f.adjacentHalfedges()) {
+            double orientation = he.getIndex() < he.twin().getIndex() ? 1.0 : -1.0;
+            triplets.push_back(Eigen::Triplet<double>(i, he.edge().getIndex(), orientation));
+        }
+    }
+
+    SparseMatrix<double> exteriorDerivative1Form(nFaces, nEdges);
+    exteriorDerivative1Form.setFromTriplets(triplets.begin(), triplets.end());
+    return exteriorDerivative1Form;
 }
 
 } // namespace surface
