@@ -81,7 +81,15 @@ double VertexPositionGeometry::totalArea() const {
 double VertexPositionGeometry::cotan(Halfedge he) const {
 
     // TODO
-    return 0; // placeholder
+    // 
+    // 
+    // 
+    Vector3 u = vertexPositions[he.next().tipVertex()] -
+                vertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
+    Vector3 v = vertexPositions[he.tailVertex()] -
+                vertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
+
+    return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
 }
 
 /*
@@ -93,7 +101,11 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
 double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
 
     // TODO
-    return 0; // placeholder
+    double total = 0.0;
+    for (Face f : v.adjacentFaces()) {
+        total += faceArea(f);
+    }
+    return (total / 3.0); 
 }
 
 /*
