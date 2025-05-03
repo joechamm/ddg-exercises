@@ -69,16 +69,25 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
     // The Hodge star operator on 1-forms is the cotangent Laplace operator, (1/2)(cot a + cot b)
     // where a and b are the angles opposite the halfedge. We can use the cotan method on the halfedge
     // to get cot a, and the twin operator on our halfedge allows us to get cot b.
-    size_t nEdges = mesh.nEdges();
-    std::vector<Eigen::Triplet<double>> triplets(nEdges);
-    for (size_t i = 0; i < nEdges; ++i) {
-        Edge e = mesh.edge(i);
-        double cotA = cotan(e.halfedge());
-        double cotB = cotan(e.halfedge().twin());
-        triplets[i] = Eigen::Triplet<double>(i, i, 0.5 * (cotA + cotB));
+    /* size_t nEdges = mesh.nEdges();
+     std::vector<Eigen::Triplet<double>> triplets(nEdges);
+     for (size_t i = 0; i < nEdges; ++i) {
+         Edge e = mesh.edge(i);
+         double cotA = cotan(e.halfedge());
+         double cotB = cotan(e.halfedge().twin());
+         triplets[i] = Eigen::Triplet<double>(i, i, 0.5 * (cotA + cotB));
+     }
+
+     SparseMatrix<double> hodgeStar1Form(nEdges, nEdges);
+     hodgeStar1Form.setFromTriplets(triplets.begin(), triplets.end());
+     return hodgeStar1Form;*/
+    std::vector<Eigen::Triplet<double>> triplets;
+    for (Edge e : mesh.edges()) {
+        double area = (cotan(e.halfedge()) + cotan(e.halfedge().twin())) / 2.0;
+        triplets.push_back(Eigen::Triplet<double>(e.getIndex(), e.getIndex(), area));
     }
 
-    SparseMatrix<double> hodgeStar1Form(nEdges, nEdges);
+    SparseMatrix<double> hodgeStar1Form(mesh.nEdges(), mesh.nEdges());
     hodgeStar1Form.setFromTriplets(triplets.begin(), triplets.end());
     return hodgeStar1Form;
 }

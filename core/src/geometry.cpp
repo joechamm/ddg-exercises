@@ -84,10 +84,15 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
     // 
     // 
     // 
-    Vector3 u = vertexPositions[he.next().tipVertex()] -
-                vertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
-    Vector3 v = vertexPositions[he.tailVertex()] -
-                vertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
+    Vector3 a = inputVertexPositions[he.next().tipVertex()];
+    Vector3 b = inputVertexPositions[he.tailVertex()];
+    Vector3 c = inputVertexPositions[he.tipVertex()];
+    Vector3 u = b - a;
+    Vector3 v = c - a;
+    //Vector3 u = inputVertexPositions[he.next().tipVertex()] -
+    //            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
+    //Vector3 v = inputVertexPositions[he.tailVertex()] -
+    //            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
 
     return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
 }

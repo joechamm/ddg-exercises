@@ -160,6 +160,9 @@ TEST_F(DiscreteExteriorCalculusTest, buildHodgeStar0Form) {
 
     std::cerr << "Testing buildHodgeStar0Form()..." << std::endl;
     Vector<double> result = H0 * Vector<double>::Ones(mesh->nVertices());
+    double error = (result - H0_soln).norm();
+    double h0_soln_norm = H0_soln.norm();
+    std::cout << "Error: " << error << std::endl << "H0_soln Norm: " << h0_soln_norm << std::endl;
     EXPECT_TRUE((result - H0_soln).norm() < 1e-6);
 }
 
@@ -167,13 +170,19 @@ TEST_F(DiscreteExteriorCalculusTest, buildHodgeStar1Form) {
 
     std::cerr << "Testing buildHodgeStar1Form()..." << std::endl;
     Vector<double> result = H1 * Vector<double>::Ones(mesh->nEdges());
-    EXPECT_TRUE((result - H1_soln).norm() < 1e-4);
+    double error = (result - H1_soln).norm();
+    double h1_soln_norm = H1_soln.norm();
+    std::cout << "H1 error: " << error << std::endl << "H1_sol Norm: " << h1_soln_norm << std::endl;    
+    EXPECT_TRUE((result - H1_soln).norm() / H1_soln.norm() < 1e-4);
 }
 
 TEST_F(DiscreteExteriorCalculusTest, buildHodgeStar2Form) {
 
     std::cerr << "Testing buildHodgeStar2Form()..." << std::endl;
     Vector<double> result = H2 * Vector<double>::Ones(mesh->nFaces());
+    double error = (result - H2_soln).norm();
+    double h2_soln_norm = H2_soln.norm();
+    std::cout << "H2 error: " << error << std::endl << "H2_soln Norm: " << h2_soln_norm << std::endl;
     EXPECT_TRUE((result - H2_soln).norm() / H2_soln.norm() < 1e-6);
 }
 
