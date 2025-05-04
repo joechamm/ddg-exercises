@@ -68,9 +68,13 @@ void flipZ() {
     psMesh->updateVertexPositions(geometry->inputVertexPositions);
 }
 
-void showSelected() {
-    // pass
-}
+
+
+//void showSelected() {
+//    // pass
+//    // TODO
+//    std::cout << "showSelected called. Implementation needed." << std::endl;
+//}
 
 /* Called once at start of program. */
 void computeNormals() {

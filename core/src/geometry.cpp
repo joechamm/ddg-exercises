@@ -135,7 +135,16 @@ double VertexPositionGeometry::angle(Corner c) const {
 double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
 
     // TODO
-    return 0; // placeholder
+    // The dihedral angle between the two normals, N_ijk and N_ijl, of two adjacent faces, ijk and ijl,
+    // is given by atan2((e_ij / |e_ij|) . (N_ijk x N_jil), (N_ijk . N_jil))
+    // where e_ij is the edge between vertices i and j, and N_ijk and N_ijl are the normals of the two faces.
+    Face f1 = he.face();
+    Face f2 = he.twin().face();
+    Vector3 n1 = faceNormal(f1);
+    Vector3 n2 = faceNormal(f2);
+    Vector3 unitEdge = unit(halfedgeVector(he));
+    Vector3 f1xf2 = cross(n1, n2);
+    return atan2(dot(unitEdge, f1xf2), dot(n1, n2));
 }
 
 /*
