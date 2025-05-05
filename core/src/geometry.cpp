@@ -84,17 +84,44 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
     // 
     // 
     // 
-    Vector3 a = inputVertexPositions[he.next().tipVertex()];
-    Vector3 b = inputVertexPositions[he.tailVertex()];
-    Vector3 c = inputVertexPositions[he.tipVertex()];
-    Vector3 u = b - a;
-    Vector3 v = c - a;
-    //Vector3 u = inputVertexPositions[he.next().tipVertex()] -
-    //            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
-    //Vector3 v = inputVertexPositions[he.tailVertex()] -
-    //            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
+    //Vector3 a = inputVertexPositions[he.next().tipVertex()];
+    //Vector3 b = inputVertexPositions[he.tailVertex()];
+    //Vector3 c = inputVertexPositions[he.tipVertex()];
+    //Vector3 u = b - a;
+    //Vector3 v = c - a;
+    ////Vector3 u = inputVertexPositions[he.next().tipVertex()] -
+    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
+    ////Vector3 v = inputVertexPositions[he.tailVertex()] -
+    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
 
-    return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
+    //return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
+
+    // Let the triangle ijk be oriented with the halfedge ki, so that the tail of this halfedge is vertex k and the tip
+    // is vertex i. Using Heron's formula, the area of the triangle ijk is A_ijk = Sqrt[s * (s - l_ij) * (s - l_jk) * (s - l_ki)], 
+    // where s = (l_ij + l_jk + l_ki) / 2. We also have A_ijk = 1/2 * l_ki * l_jk * sin(theta_k_ij), where theta_k_ij is the angle at
+    // vertex k, and l_ki and l_jk are the lengths of the edges ki and jk, respectively. Combining these two equations with the
+    // law of cosines, (l_ij)^2 = (l_jk)^2 + (l_ki)^2 - 2 * l_jk * l_ki * cos(theta_k_ij), we can calculate cotan( theta_k_ij ) =
+    // cos( theta_k_ij ) / sin( theta_k_ij). Solving for cos and sin here we get:
+    
+    //      cos(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (2 * l_jk * l_ki)
+    //      sin(theta_k_ij) = 2 * A_ijk / (l_ki * l_jk)
+    //      cot(theta_k_ij) = cos(theta_k_ij) / sin(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) * ( l_ki * l_jk ) / ( (2 * l_jk * l_ki) * (2 * A_ijk) )
+    //      cot(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (4 * A_ijk)
+
+    // Let's compute the lengths of the edges l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the
+    // correct orientation. Since we're at k, the halfedge is ki, and we can traverse around to get ij then jk.
+    Halfedge he_ij = he.next(); // halfedge ij
+    double l_ki = norm(inputVertexPositions[he.tipVertex()] - inputVertexPositions[he.tailVertex()]); // length of edge ki
+    double l_ij = norm(inputVertexPositions[he_ij.tipVertex()] - inputVertexPositions[he.tipVertex()]); // length of edge ij
+    double l_jk = norm(inputVertexPositions[he.tailVertex()] - inputVertexPositions[he_ij.tipVertex()]); // length of edge jk
+    
+    // Use Heron's formula to compute the area of the triangle ijk.
+    double s = (l_ij + l_jk + l_ki) / 2.0; // semi-perimeter
+    double A_ijk = sqrt(s * (s - l_ij) * (s - l_jk) * (s - l_ki)); // area of triangle ijk
+    // Now we can compute the cotangent of the angle opposite the halfedge.
+    double cotan =
+        ((l_jk * l_jk) + (l_ki * l_ki) - (l_ij * l_ij)) / (4.0 * A_ijk); // cotangent of the angle opposite the halfedge
+    return cotan;
 }
 
 /*
@@ -123,7 +150,16 @@ double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
 double VertexPositionGeometry::angle(Corner c) const {
 
     // TODO
-    return 0; // placeholder
+    // Use law of cosines to get interior angle at corner i of triangle ijk. For vertices i, j, k, we first compute
+    // l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the correct orientation. The interior angle theta_i_jk,
+    // for the corner i in the ijk oriented triangle, will then be given by theta_i_jk = arccos( ( (l_ij)^2 + (l_ki)^2 - (l_jk)^2 ) / 2 * l_ij * l_ki ) ).
+    // We're starting at vertex i, so the first halfedge is ij.
+    double l_ij = norm(inputVertexPositions[c.halfedge().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ij
+    double l_jk = norm(inputVertexPositions[c.halfedge().next().tipVertex()] - inputVertexPositions[c.halfedge().tipVertex()]); // length of edge jk    
+    double l_ki = norm(inputVertexPositions[c.halfedge().next().next().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ki
+    double ctheta_i_jk = ((l_ij * l_ij) + (l_ki * l_ki) - (l_jk * l_jk)) / (2.0 * l_ij * l_ki);
+    ctheta_i_jk = clamp(ctheta_i_jk, -1.0, 1.0); // clamp to avoid NaN
+    return acos(ctheta_i_jk);                    // angle at corner i
 }
 
 /*
@@ -156,7 +192,21 @@ double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
 Vector3 VertexPositionGeometry::vertexNormalEquallyWeighted(Vertex v) const {
 
     // TODO
-    return {0, 0, 0}; // placeholder
+    // we'll just add up the normals of all incident faces, then normalize
+    Vector3 normalSum = {0.0, 0.0, 0.0};
+    for (Face f : v.adjacentFaces()) {
+        // for each face, we need the normal of the face.
+        // we can get the normal of the face using the halfedge of the face.
+        Halfedge he = f.halfedge();
+        Vector3 pA = inputVertexPositions[he.vertex()];
+        he = he.next();
+        Vector3 pB = inputVertexPositions[he.vertex()];
+        he = he.next();
+        Vector3 pC = inputVertexPositions[he.vertex()];
+        normalSum += unit(cross(pB - pA, pC - pA));
+    }
+
+    return unit(normalSum);
 }
 
 /*
@@ -168,7 +218,58 @@ Vector3 VertexPositionGeometry::vertexNormalEquallyWeighted(Vertex v) const {
 Vector3 VertexPositionGeometry::vertexNormalAngleWeighted(Vertex v) const {
 
     // TODO
-    return {0, 0, 0}; // placeholder
+    Vector3 normalSum = {0.0, 0.0, 0.0};
+    for (Face f : v.adjacentFaces()) {
+        // for each face, we need the corner angle at the vertex, and the normal of the face.
+        // we can get the normal of the face using the halfedge of the face.
+        // we can get the corner angle at the vertex using the halfedge of the face.
+        Vertex vj, vk;
+        Corner c;
+        Halfedge he = f.halfedge();
+        // For triangle face ijk, we'll assume that v is vertex i. There are three possibilities
+        // for the halfedge.
+        // 1. v is the tail vertex of the halfedge, in which case j will be the tip vertex and k will be the tip of
+        // next. Our corner c will be the halfedge corner.
+        // 2. v is the tip vertex of the halfedge, in which case k will be the tail vertex and j will be the tail of
+        // next. Our corner will be the next halfedge's corner.
+        // 3. v is neither tip nor tail of the halfedge, which means that the tail vertex is j and the tip vertex is k.
+        // In this case, the corner will belong to the second halfedge.
+        if (he.vertex() == v) {
+            vj = he.tipVertex();
+            vk = he.next().tipVertex();
+            c = he.corner();
+        } else if (he.tipVertex() == v) {
+            vk = he.tailVertex();
+            vj = he.next().tipVertex();
+            c = he.next().corner();
+        } else {
+            vk = he.tipVertex();
+            vj = he.tailVertex();
+            c = he.next().next().corner();
+        }
+
+        Vector3 eij = inputVertexPositions[vj] - inputVertexPositions[v];
+        Vector3 eik = inputVertexPositions[vk] - inputVertexPositions[v];
+        Vector3 ejk = inputVertexPositions[vk] - inputVertexPositions[vj];
+        double l_ij = norm(eij); // length of edge ij
+        double l_ik = norm(eik); // length of edge ik
+        double l_jk = norm(ejk); // length of edge jk
+
+
+         // Use law of cosines to get interior angle at corner i of triangle ijk. For vertices i, j, k, we first compute
+        // l_ij, l_ik, and l_jk. We can use the halfedge to ensure we have the correct orientation. The interior angle
+        // theta_i_jk, for the corner i in the ijk oriented triangle, will then be given by theta_i_jk = arccos( (
+        // (l_ij)^2 + (l_ki)^2 - (l_jk)^2 ) / 2 * l_ij * l_ki ) ). We're starting at vertex v = vi, so the first halfedge is
+        // ij.
+
+        double chteta_i_jk = clamp(((l_ij * l_ij) + (l_ik * l_ik) - (l_jk * l_jk)) / (2.0 * l_ij * l_ik), -1.0, 1.0); // clamp to avoid NaN
+        double theta_i_jk = acos(chteta_i_jk); // angle at corner i
+        // Now we can compute the normal of the face using the halfedge.
+        Vector3 faceNormal = unit(cross(eij, eik));
+        normalSum += theta_i_jk * faceNormal; // add the normal of the face weighted by the angle      
+    }
+    
+    return unit(normalSum); // normalize the normal vector
 }
 
 /*
@@ -180,7 +281,33 @@ Vector3 VertexPositionGeometry::vertexNormalAngleWeighted(Vertex v) const {
 Vector3 VertexPositionGeometry::vertexNormalSphereInscribed(Vertex v) const {
 
     // TODO
-    return {0, 0, 0}; // placeholder
+    Vector3 normalSum = {0.0, 0.0, 0.0};
+    for (Face f : v.adjacentFaces()) {
+        // for each face, we need the corner angle at the vertex, and the normal of the face.
+        // we can get the normal of the face using the halfedge of the face.
+        // we can get the corner angle at the vertex using the halfedge of the face.
+        Vertex vj, vk;
+        Halfedge he = f.halfedge();
+        if (he.vertex() == v) {
+            vj = he.tipVertex();
+            vk = he.next().tipVertex();
+        } else if (he.tipVertex() == v) {
+            vk = he.tailVertex();
+            vj = he.next().tipVertex();
+        } else {
+            vk = he.tipVertex();
+            vj = he.tailVertex();
+        }
+
+        Vector3 eij = inputVertexPositions[vj] - inputVertexPositions[v];
+        Vector3 eik = inputVertexPositions[vk] - inputVertexPositions[v];
+        double l_ijSq = dot(eij, eij); // squared length of eij
+        double l_ikSq = dot(eik, eik); // squared length of eik
+        double lsqInv = 1.0 / (l_ijSq * l_ikSq); // inverse of the squared length of the edge
+        normalSum += cross(eij, eik) * lsqInv;   // add the normal of the face weighted by the angle       
+    }
+
+    return unit(normalSum); // normalize the normal vector
 }
 
 /*
@@ -192,7 +319,37 @@ Vector3 VertexPositionGeometry::vertexNormalSphereInscribed(Vertex v) const {
 Vector3 VertexPositionGeometry::vertexNormalAreaWeighted(Vertex v) const {
 
     // TODO
-    return {0, 0, 0}; // placeholder
+    Vector3 normalSum = {0.0, 0.0, 0.0};
+    for (Face f : v.adjacentFaces()) {
+        // for each face, we need the corner angle at the vertex, and the normal of the face.
+        // we can get the normal of the face using the halfedge of the face.
+        // we can get the corner angle at the vertex using the halfedge of the face.
+        Vertex vj, vk;
+        Halfedge he = f.halfedge();
+        if (he.vertex() == v) {
+            vj = he.tipVertex();
+            vk = he.next().tipVertex();
+        } else if (he.tipVertex() == v) {
+            vk = he.tailVertex();
+            vj = he.next().tipVertex();
+        } else {
+            vk = he.tipVertex();
+            vj = he.tailVertex();
+        }
+        Vector3 eij = inputVertexPositions[vj] - inputVertexPositions[v];
+        Vector3 eik = inputVertexPositions[vk] - inputVertexPositions[v];
+        Vector3 ejk = inputVertexPositions[vk] - inputVertexPositions[vj];
+        // Use Heron's formula to find the face area.
+        double l_ij = norm(eij);
+        double l_ik = norm(eik);
+        double l_jk = norm(ejk);
+        double s = (l_ij + l_jk + l_ik) / 2.0;
+        double A_ijk = sqrt(s * (s - l_ij) * (s - l_jk) * (s - l_ik)); // area of triangle ijki) * (s - l_jk) * (s - l_ik));
+        Vector3 faceNormal = cross(eij, eik);
+        normalSum += A_ijk * unit(faceNormal);
+    }
+
+    return unit(normalSum); // normalize the normal vector
 }
 
 /*
