@@ -78,50 +78,63 @@ double VertexPositionGeometry::totalArea() const {
  * Input: The halfedge whose cotan weight is to be computed.
  * Returns: The cotan of the angle opposite the given halfedge.
  */
+//double VertexPositionGeometry::cotan(Halfedge he) const {
+//
+//    // TODO
+//    // 
+//    // 
+//    // 
+//    //Vector3 a = inputVertexPositions[he.next().tipVertex()];
+//    //Vector3 b = inputVertexPositions[he.tailVertex()];
+//    //Vector3 c = inputVertexPositions[he.tipVertex()];
+//    //Vector3 u = b - a;
+//    //Vector3 v = c - a;
+//    ////Vector3 u = inputVertexPositions[he.next().tipVertex()] -
+//    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
+//    ////Vector3 v = inputVertexPositions[he.tailVertex()] -
+//    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
+//
+//    //return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
+//
+//    // Let the triangle ijk be oriented with the halfedge ki, so that the tail of this halfedge is vertex k and the tip
+//    // is vertex i. Using Heron's formula, the area of the triangle ijk is A_ijk = Sqrt[s * (s - l_ij) * (s - l_jk) * (s - l_ki)], 
+//    // where s = (l_ij + l_jk + l_ki) / 2. We also have A_ijk = 1/2 * l_ki * l_jk * sin(theta_k_ij), where theta_k_ij is the angle at
+//    // vertex k, and l_ki and l_jk are the lengths of the edges ki and jk, respectively. Combining these two equations with the
+//    // law of cosines, (l_ij)^2 = (l_jk)^2 + (l_ki)^2 - 2 * l_jk * l_ki * cos(theta_k_ij), we can calculate cotan( theta_k_ij ) =
+//    // cos( theta_k_ij ) / sin( theta_k_ij). Solving for cos and sin here we get:
+//    
+//    //      cos(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (2 * l_jk * l_ki)
+//    //      sin(theta_k_ij) = 2 * A_ijk / (l_ki * l_jk)
+//    //      cot(theta_k_ij) = cos(theta_k_ij) / sin(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) * ( l_ki * l_jk ) / ( (2 * l_jk * l_ki) * (2 * A_ijk) )
+//    //      cot(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (4 * A_ijk)
+//
+//    // Let's compute the lengths of the edges l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the
+//    // correct orientation. Since we're at k, the halfedge is ki, and we can traverse around to get ij then jk.
+//    Halfedge he_ij = he.next(); // halfedge ij
+//    double l_ki = norm(inputVertexPositions[he.tipVertex()] - inputVertexPositions[he.tailVertex()]); // length of edge ki
+//    double l_ij = norm(inputVertexPositions[he_ij.tipVertex()] - inputVertexPositions[he.tipVertex()]); // length of edge ij
+//    double l_jk = norm(inputVertexPositions[he.tailVertex()] - inputVertexPositions[he_ij.tipVertex()]); // length of edge jk
+//    
+//    // Use Heron's formula to compute the area of the triangle ijk.
+//    double s = (l_ij + l_jk + l_ki) / 2.0; // semi-perimeter
+//    double A_ijk = sqrt(s * (s - l_ij) * (s - l_jk) * (s - l_ki)); // area of triangle ijk
+//    // Now we can compute the cotangent of the angle opposite the halfedge.
+//    double cotan =
+//        ((l_jk * l_jk) + (l_ki * l_ki) - (l_ij * l_ij)) / (4.0 * A_ijk); // cotangent of the angle opposite the halfedge
+//    return cotan;
+//}
 double VertexPositionGeometry::cotan(Halfedge he) const {
-
     // TODO
-    // 
-    // 
-    // 
-    //Vector3 a = inputVertexPositions[he.next().tipVertex()];
-    //Vector3 b = inputVertexPositions[he.tailVertex()];
-    //Vector3 c = inputVertexPositions[he.tipVertex()];
-    //Vector3 u = b - a;
-    //Vector3 v = c - a;
-    ////Vector3 u = inputVertexPositions[he.next().tipVertex()] -
-    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tip of next halfedge
-    ////Vector3 v = inputVertexPositions[he.tailVertex()] -
-    ////            inputVertexPositions[he.tipVertex()]; // vector from tip of this halfedge to tail of this halfedge
-
-    //return dot(u, v) / cross(u, v).norm(); // cos(theta) / sin(theta) = cot(theta)
-
-    // Let the triangle ijk be oriented with the halfedge ki, so that the tail of this halfedge is vertex k and the tip
-    // is vertex i. Using Heron's formula, the area of the triangle ijk is A_ijk = Sqrt[s * (s - l_ij) * (s - l_jk) * (s - l_ki)], 
-    // where s = (l_ij + l_jk + l_ki) / 2. We also have A_ijk = 1/2 * l_ki * l_jk * sin(theta_k_ij), where theta_k_ij is the angle at
-    // vertex k, and l_ki and l_jk are the lengths of the edges ki and jk, respectively. Combining these two equations with the
-    // law of cosines, (l_ij)^2 = (l_jk)^2 + (l_ki)^2 - 2 * l_jk * l_ki * cos(theta_k_ij), we can calculate cotan( theta_k_ij ) =
-    // cos( theta_k_ij ) / sin( theta_k_ij). Solving for cos and sin here we get:
-    
-    //      cos(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (2 * l_jk * l_ki)
-    //      sin(theta_k_ij) = 2 * A_ijk / (l_ki * l_jk)
-    //      cot(theta_k_ij) = cos(theta_k_ij) / sin(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) * ( l_ki * l_jk ) / ( (2 * l_jk * l_ki) * (2 * A_ijk) )
-    //      cot(theta_k_ij) = ( (l_jk)^2 + (l_ki)^2 - (l_ij)^2 ) / (4 * A_ijk)
-
-    // Let's compute the lengths of the edges l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the
-    // correct orientation. Since we're at k, the halfedge is ki, and we can traverse around to get ij then jk.
-    Halfedge he_ij = he.next(); // halfedge ij
-    double l_ki = norm(inputVertexPositions[he.tipVertex()] - inputVertexPositions[he.tailVertex()]); // length of edge ki
-    double l_ij = norm(inputVertexPositions[he_ij.tipVertex()] - inputVertexPositions[he.tipVertex()]); // length of edge ij
-    double l_jk = norm(inputVertexPositions[he.tailVertex()] - inputVertexPositions[he_ij.tipVertex()]); // length of edge jk
-    
-    // Use Heron's formula to compute the area of the triangle ijk.
-    double s = (l_ij + l_jk + l_ki) / 2.0; // semi-perimeter
-    double A_ijk = sqrt(s * (s - l_ij) * (s - l_jk) * (s - l_ki)); // area of triangle ijk
-    // Now we can compute the cotangent of the angle opposite the halfedge.
-    double cotan =
-        ((l_jk * l_jk) + (l_ki * l_ki) - (l_ij * l_ij)) / (4.0 * A_ijk); // cotangent of the angle opposite the halfedge
-    return cotan;
+    // The cotangent of the angle opposite the halfedge e_ij in triangle ijk is given by dot(e_kj, e_ki) / cross(e_kj, e_ki).norm().
+    // We can get the halfedge e_ij from the halfedge he, and then we can get the other two edges using the halfedge's next and twin. 
+    // The halfedge e_ij is the one that points from vertex i to vertex j, so we can get the other two edges by traversing the halfedge 
+    // to get the other two vertices.
+    Halfedge he_jk = he.next(); // halfedge jk
+    Vector3 e_kj = inputVertexPositions[he_jk.tailVertex()] - inputVertexPositions[he_jk.tipVertex()]; // vector from k to j
+    Vector3 e_ki = inputVertexPositions[he.tailVertex()] - inputVertexPositions[he_jk.tipVertex()]; // vector from k to i
+    double dot_product = dot(e_kj, e_ki); // dot product of e_kj and e_ki = |e_kj| * |e_ki| * cos(theta_k_ij)
+    double cross_productNorm = cross(e_kj, e_ki).norm(); // norm of cross product of e_kj and e_ki = |e_kj| * |e_ki| * sin(theta_k_ij)
+    return (dot_product / cross_productNorm); // cotangent of the angle opposite the halfedge
 }
 
 /*
@@ -428,17 +441,16 @@ Vector3 VertexPositionGeometry::vertexNormalMeanCurvature(Vertex v) const {
     //    Vector3 e_ij = inputVertexPositions[he.tipVertex()] - inputVertexPositions[v];
     //    normalSum += 0.5 * (cotan(he) + cotan(he.twin())) * e_ij;
     //}
+    // The mean curvature normal is given by (1/2)(sum over all halfedges e_ij of (cotan(alpha_k_ij) + cotan(beta_l_ij) * e_ij), where alpha_k_ij is the angle opposite the halfedge e_ij in the triangle ijk, and beta_l_ij is the
+    // angle opposite halfedge e_ij in triangle ilj.
     for (Halfedge he : v.outgoingHalfedges()) {
-        Vector3 e_ij = inputVertexPositions[he.tipVertex()] - inputVertexPositions[he.tailVertex()];
+        Vector3 e_ij = inputVertexPositions[he.tipVertex()] - inputVertexPositions[v];
         double cotan_k = cotan(he);
         double cotan_l = cotan(he.twin());
-        double cotanSum = cotan_l + cotan_k;
-        normalSum += cotanSum * e_ij;
-        //        normalSum += (0.5 * (cotan_k + cotan_l)) * e_ij;
+        normalSum += (0.5 * (cotan_k + cotan_l)) * e_ij; // add the normal of the face weighted by the angle
     }
 
     return unit(normalSum); // normalize the normal vector
-
 }
 
 /*
