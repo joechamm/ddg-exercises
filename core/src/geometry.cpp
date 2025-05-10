@@ -644,6 +644,10 @@ SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
  //   SparseMatrix<double> A0 = buildVertexEdgeAdjacencyMatrix(); // |V| x |E| matrix
 //    SparseMatrix<double> L = A0.transpose() * H1 * D0;          // |V| x |V| matrix
     SparseMatrix<double> L = D0.transpose() * H1 * D0; // |V| x |V| matrix
+    SparseMatrix<double> epsI(mesh.nVertices(), mesh.nVertices());
+    epsI.setIdentity();
+    epsI = (1e-8) * epsI; // set the identity matrix to a small constant
+    L = L + epsI;
 
     return L;
 }

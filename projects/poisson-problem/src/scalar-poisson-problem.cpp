@@ -33,11 +33,23 @@ Vector<double> ScalarPoissonProblem::solve(const Vector<double>& rho) const {
     // First we need to find rhoBar, which is the integral of rho over the mesh divided by the total area.
     SparseMatrix<double> L = this->A; // Laplace matrix
 
-    double rhoBarVal = ((M * rho).sum()) / totalArea; // rhoBar = M * rho / totalArea
-    Vector<double> rhoBar =
-        Vector<double>::Constant(rho.rows(), rhoBarVal); // rhoBar is a vector of the same size as rho
+    // double rhoBarVal = ((M * rho).sum()) / totalArea; // rhoBar = M * rho / totalArea
+    // Vector<double> rhoBar =
+    //     Vector<double>::Constant(rho.rows(), rhoBarVal); // rhoBar is a vector of the same size as rho
 
-    Vector<double> rhs = -M * (rho - rhoBar); // right-hand side of the equation
-    PositiveDefiniteSolver<double> solver(L); // create a solver for the Laplace matrix
-    return solver.solve(rho);                 // solve the equation Ax = -M(rho - rhoBar)
+    // Vector<double> rhs = -M * (rho - rhoBar); // right-hand side of the equation
+    // PositiveDefiniteSolver<double> solver(L); // create a solver for the Laplace matrix
+    // return solver.solve(rho);                 // solve the equation Ax = -M(rho - rhoBar)
+    double rhoBar = 0.0;
+    for (Eigen::Index i = 0; i < rho.rows(); i++) {
+        if (rho[i]) {
+            rhoBar += rho[i] * this->M.coeff(i, i);
+        }
+    }
+    rhoBar /= this->totalArea;
+
+    geometrycentral::PositiveDefiniteSolver<double> solver(L);
+    Vector<double> rhs = -this->M * (rho - rhoBar * Vector<double>::Ones(L.rows()));
+    Vector<double> sol = solver.solve(rhs);
+    return sol;
 }
