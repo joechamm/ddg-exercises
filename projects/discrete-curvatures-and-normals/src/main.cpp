@@ -70,11 +70,11 @@ void flipZ() {
 
 
 
-//void showSelected() {
-//    // pass
-//    // TODO
-//    std::cout << "showSelected called. Implementation needed." << std::endl;
-//}
+void showSelected() {
+    // pass
+    // TODO
+    std::cout << "showSelected called. Implementation needed." << std::endl;
+}
 
 /* Called once at start of program. */
 void computeNormals() {

@@ -160,32 +160,47 @@ double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
  * Input: The corner at which the angle needs to be computed.
  * Returns: The angle clamped between 0 and π.
  */
+//double VertexPositionGeometry::angle(Corner c) const {
+//
+//    // TODO
+//    // Use law of cosines to get interior angle at corner i of triangle ijk. For vertices i, j, k, we first compute
+//    // l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the correct orientation. The interior angle theta_i_jk,
+//    // for the corner i in the ijk oriented triangle, will then be given by theta_i_jk = arccos( ( (l_ij)^2 + (l_ki)^2 - (l_jk)^2 ) / 2 * l_ij * l_ki ) ).
+//    // We're starting at vertex i, so the first halfedge is ij.
+//    //double l_ij = norm(inputVertexPositions[c.halfedge().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ij
+//    //double l_jk = norm(inputVertexPositions[c.halfedge().next().tipVertex()] - inputVertexPositions[c.halfedge().tipVertex()]); // length of edge jk    
+//    //double l_ki = norm(inputVertexPositions[c.halfedge().next().next().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ki
+//    //double ctheta_i_jk = ((l_ij * l_ij) + (l_ki * l_ki) - (l_jk * l_jk)) / (2.0 * l_ij * l_ki);
+//    //ctheta_i_jk = clamp(ctheta_i_jk, -1.0, 1.0); // clamp to avoid NaN
+//    //return acos(ctheta_i_jk);                    // angle at corner i
+//    Halfedge heA = c.halfedge();
+//    Halfedge heOpp = heA.next();
+//    Halfedge heB = heOpp.next();
+//
+//    double lOpp = norm(inputVertexPositions[heOpp.tipVertex()] -
+//                       inputVertexPositions[heOpp.tailVertex()]); // length of edge opposite the corner
+//    double lA = norm(inputVertexPositions[heA.tipVertex()] - inputVertexPositions[heA.tailVertex()]);
+//    double lB = norm(inputVertexPositions[heB.tipVertex()] - inputVertexPositions[heB.tailVertex()]);
+//
+//    double q = (lA * lA + lB * lB - lOpp * lOpp) / (2.0 * lA * lB);
+//    q = clamp(q, -1.0, 1.0);
+//
+//    return std::acos(q);
+//}
 double VertexPositionGeometry::angle(Corner c) const {
-
     // TODO
-    // Use law of cosines to get interior angle at corner i of triangle ijk. For vertices i, j, k, we first compute
-    // l_ij, l_jk, and l_ki. We can use the halfedge to ensure we have the correct orientation. The interior angle theta_i_jk,
-    // for the corner i in the ijk oriented triangle, will then be given by theta_i_jk = arccos( ( (l_ij)^2 + (l_ki)^2 - (l_jk)^2 ) / 2 * l_ij * l_ki ) ).
-    // We're starting at vertex i, so the first halfedge is ij.
-    //double l_ij = norm(inputVertexPositions[c.halfedge().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ij
-    //double l_jk = norm(inputVertexPositions[c.halfedge().next().tipVertex()] - inputVertexPositions[c.halfedge().tipVertex()]); // length of edge jk    
-    //double l_ki = norm(inputVertexPositions[c.halfedge().next().next().tipVertex()] - inputVertexPositions[c.vertex()]); // length of edge ki
-    //double ctheta_i_jk = ((l_ij * l_ij) + (l_ki * l_ki) - (l_jk * l_jk)) / (2.0 * l_ij * l_ki);
-    //ctheta_i_jk = clamp(ctheta_i_jk, -1.0, 1.0); // clamp to avoid NaN
-    //return acos(ctheta_i_jk);                    // angle at corner i
-    Halfedge heA = c.halfedge();
-    Halfedge heOpp = heA.next();
-    Halfedge heB = heOpp.next();
-
-    double lOpp = norm(inputVertexPositions[heOpp.tipVertex()] -
-                       inputVertexPositions[heOpp.tailVertex()]); // length of edge opposite the corner
-    double lA = norm(inputVertexPositions[heA.tipVertex()] - inputVertexPositions[heA.tailVertex()]);
-    double lB = norm(inputVertexPositions[heB.tipVertex()] - inputVertexPositions[heB.tailVertex()]);
-
-    double q = (lA * lA + lB * lB - lOpp * lOpp) / (2.0 * lA * lB);
-    q = clamp(q, -1.0, 1.0);
-
-    return std::acos(q);
+    // We'll use the fact that dot(u, v) = |u| * |v| * cos(theta), where theta is the angle between u and v.
+    // For the triangle ijk, we'll think about the corner c as being vertex i. Then u will be the vector pointing
+    // from vertex i to vertex j, and v will be the vector pointing from vertex i to vertex k. We'll require u 
+    // and v to have unit length so that dot(u, v) = cos(theta). The angle at the corner will then be given by
+    // theta = acos(dot(u, v)).
+    Halfedge he_ij = c.halfedge(); // halfedge ij
+    Halfedge he_jk = he_ij.next(); // halfedge jk
+    Vector3 u = (inputVertexPositions[he_ij.tipVertex()] -
+                          inputVertexPositions[he_ij.tailVertex()]).normalize(); // unit vector from i to j
+    Vector3 v = (inputVertexPositions[he_jk.tipVertex()] - inputVertexPositions[he_ij.tailVertex()])
+                    .normalize(); // unit vector from i to k
+    return clamp(std::acos(dot(u, v)), 0.0, PI); // angle at corner i
 }
 
 /*
@@ -568,14 +583,77 @@ std::pair<double, double> VertexPositionGeometry::principalCurvatures(Vertex v) 
  */
 SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
 
-    SparseMatrix<double> d0(buildExteriorDerivative0Form());
+  /*   SparseMatrix<double> d0(buildExteriorDerivative0Form());
     SparseMatrix<double> star1(buildHodgeStar1Form());
-    return d0.transpose() * star1 * d0 + identityMatrix<double>(mesh.nVertices()) * 1e-8;
+    return d0.transpose() * star1 * d0 + identityMatrix<double>(mesh.nVertices()) * 1e-8;*/
+
+    // Laplacian matrix is a sparse n x n matrix, where n is the number of vertices. The non-zero off-diagonal entry L_ij 
+    // corresponds to the edge between vertices i and j, and is computed as - w_ij, where w_ij is the cotangent weight of
+    // the edge. We calculate w_ij as the sum over all triangles ijk that contain edge ij, of cotan(theta_k_ij) / 2,
+    // where theta_k_ij is the angle opposite the edge ij in triangle ijk. The diagonal entry L_ii is computed as the sum
+    // over all edges e_ij incident to vertex i of w_ij.
+
+    //std::vector<Eigen::Triplet<double>> triplets;
+    //for (Vertex v : mesh.vertices()) {
+    //    size_t i = v.getIndex();        
+    //    double l_ii = 0.0;
+    //    double w_ij = 0.0;
+
+    //    
+
+    //    // loop over the outgoing halfedges and grab w_ij for each
+    //    for (Halfedge he : v.outgoingHalfedges()) {
+
+    //        size_t j = he.tipVertex().getIndex(); // get the colum index j
+    //        
+    //        double w_ij = 0.5 * (cotan(he) + cotan(he.twin())); // get the cotan weight
+
+    //        triplets.push_back(Eigen::Triplet<double>(i, j, -1.0 * w_ij));
+
+    //        wsum += w_ij;
+    //    }
+
+    //    triplets.push_back(Eigen::Triplet<double>(i, i, wsum));
+   
+    //}
+
+    //SparseMatrix<double> L(mesh.nVertices(), mesh.nVertices());
+    //L.setFromTriplets(triplets.begin(), triplets.end());
+
+    //return L;
+  //  We can write the laplacian as star d star d, where star is the hodge star operator, and d is the exterior
+  //  derivative. Since we want the laplacian to take a 0-form, we'll first apply d0, then star1, then d1, then star2.
+
+    // DEBUGGING
+    std::cout << "Building Laplace matrix..." << std::endl;
+
+    //SparseMatrix<double> d0Form = buildExteriorDerivative0Form();   // |E| x |V| matrix
+    //SparseMatrix<double> star1Form = buildHodgeStar1Form();         // |E| x |E| matrix
+    //SparseMatrix<double> d1Form = buildExteriorDerivative1Form();   // |F| x |E| matrix
+    //SparseMatrix<double> star2Form = buildHodgeStar2Form();         // |F| x |F| matrix
+    //SparseMatrix<double> starD0 = star1Form * d0Form;               // (|E| x |E|) * (|E| x |V|) = |E| x |V| matrix
+    //SparseMatrix<double> starD1 = star2Form * d1Form;               // (|F| x |F|) * (|F| x |E|) = |F| x |E| matrix
+    //SparseMatrix<double> L = starD1 * starD0;                       // (|F| x |E|) * (|E| x |V|) = |F| x |V| matrix
+    //L.makeCompressed();
+
+
+    // We'll write the Laplacian as L = H0^-1 * D0^T * H1 * D0 + I * 1e-8, where H0 is the hodge star operator on
+    // 0-forms, D0 is the exterior derivative on 0-forms, and H1 is the hodge star operator on 1-forms.
+    SparseMatrix<double> D0 = buildExteriorDerivative0Form(); // |E| x |V| matrix
+    SparseMatrix<double> H1 = buildHodgeStar1Form();           // |E| x |E| matrix
+ //   SparseMatrix<double> A0 = buildVertexEdgeAdjacencyMatrix(); // |V| x |E| matrix
+//    SparseMatrix<double> L = A0.transpose() * H1 * D0;          // |V| x |V| matrix
+    SparseMatrix<double> L = D0.transpose() * H1 * D0; // |V| x |V| matrix
+
+    return L;
 }
 
 /*
  * Builds the sparse diagonal mass matrix containing the barycentric dual area of each vertex.
  *
+ * The mass matrix is an |V| x |V| diagonal matrix, where |V| is the number of vertices in the mesh.
+ * The diagonal entry M_ii entry is the barycentric dual area of vertex i.
+ * 
  * Input:
  * Returns: Sparse mass matrix for the mesh.
  */

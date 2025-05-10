@@ -110,6 +110,62 @@ class ScalarPoissonProblemTest : public ::testing::Test {
     }
 };
 
+// DEBUGGING 
+void printCompareMatrix(const SparseMatrix<double>& sol, const SparseMatrix<double>& actual) {
+
+    size_t solRows = sol.rows();
+    size_t solCols = sol.cols();
+    size_t actualRows = actual.rows();
+    size_t actualCols = actual.cols();
+    if (solRows == actualRows && solCols == actualCols) {
+        std::cout << "Matrix sizes match. Dimensions: " << solRows << " x " << solCols << std::endl;    
+    } else {
+        std::cout << "Matrix sizes do not match. Dimensions: " << solRows << " x " << solCols << " vs. " << actualRows
+                  << " x " << actualCols << std::endl
+                  << "Ending Comparison..." << std::endl;
+        return;
+    }
+
+    SparseMatrix<double> diff = sol - actual;
+    std::cout << "Frobenius Norm of difference: " << diff.norm() << std::endl;
+    std::cout << "Number of non-zero entries in the difference matrix: " << diff.nonZeros() << std::endl;
+    std::cout << "Sum of non-zero entries in the difference matrix: " << diff.sum() << std::endl;
+//    std::cout << "Difference Matrix: " << std::endl << diff << std::endl;
+}
+
+void dumpMatrix(const SparseMatrix<double>& mat, const std::string& filepath) {
+ 
+    std::ofstream output_file(filepath);
+    if (output_file.is_open()) {
+        for (size_t i = 0; i < mat.outerSize(); ++i) {
+            for (SparseMatrix<double>::InnerIterator it(mat, i); it; ++it) {
+                output_file << it.value() << " " << it.row() << " " << it.col() << std::endl;
+            }
+        }
+    } else {
+        std::cerr << "Oops, could not open output file <" << filepath
+                  << "> for unit testing. Make sure filepath is correct." << std::endl;
+        std::runtime_error("");
+    }
+    output_file.close();
+    std::cout << "Dumped matrix to file <" << filepath << ">" << std::endl;
+}
+
+void dumpVector(const Vector<double>& rho, const std::string& filepath) {
+    std::ofstream output_file(filepath);
+    if (output_file.is_open()) {
+        output_file << "Vector size: " << rho.size() << std::endl;
+        output_file << "L2 norm: " << rho.norm() << std::endl;
+        output_file << rho << std::endl;
+    } else {
+        std::cerr << "Oops, could not open output file <" << filepath
+                  << "> for unit testing. Make sure filepath is correct." << std::endl;
+        std::runtime_error("");
+    }
+    output_file.close();
+    std::cout << "Dumped vector to file <" << filepath << ">" << std::endl;
+}
+
 // Some sanity checks for the Laplace matrix and mass matrix.
 TEST_F(ScalarPoissonProblemTest, laplaceMatrixSymmetric) {
     bool success = true;
@@ -139,6 +195,19 @@ TEST_F(ScalarPoissonProblemTest, laplaceMatrixRowSums) {
         }
         if (abs(rowSum) > eps) success = false;
     }
+
+    std::cout << "Dumping Laplace matrix..." << std::endl;
+    dumpMatrix(A, "laplace_matrix.txt");
+    std::cout << "Dumping Laplace solution..." << std::endl;
+    dumpMatrix(laplace_soln, "laplace_soln.txt");
+    // DEBUGGING
+    //if (!success) {
+    //    std::cout << "Row sum of actual Laplace Matrix do not sum to 0. Dumping difference..." << std::endl;
+    //    dumpMatrix(A, "laplace_matrix.txt");
+    //    dumpMatrix(laplace_soln, "laplace_soln.txt");
+
+    //}
+
     EXPECT_TRUE(success) << "Each row of Laplace matrix does not sum to zero";
 }
 TEST_F(ScalarPoissonProblemTest, laplaceMatrixDiagonalSums) {
@@ -200,6 +269,14 @@ TEST_F(ScalarPoissonProblemTest, massMatrix) {
 TEST_F(ScalarPoissonProblemTest, solve) {
 
     Vector<double> phi = SPP.solve(rho);
+    // DEBUGGING
+    std::cout << "Dumping phi..." << std::endl;
+    dumpVector(phi, "phi.txt");
+    std::cout << "Dumping phi_soln..." << std::endl;
+    dumpVector(phi_soln, "phi_soln.txt");
+    std::cout << "Dumping difference..." << std::endl;
+    dumpVector(phi - phi_soln, "phi_diff.txt");
+    
     EXPECT_TRUE((phi - phi_soln).norm() < 1e-6) << "Poisson problem solved incorrectly";
 }
 } // namespace
