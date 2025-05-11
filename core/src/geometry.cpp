@@ -681,9 +681,8 @@ SparseMatrix<std::complex<double>> VertexPositionGeometry::complexLaplaceMatrix(
     std::vector<Eigen::Triplet<std::complex<double>>> triplets;
 
     for (int i = 0; i < laplace.outerSize(); ++i) {
-        for (typename SparseMatrix<double>::InnerIterator it(laplace, i); it; ++it) {
-        
-        triplets.emplace_back(it.row(), it.col(), std::complex<double>(it.value(), 0));
+        for (typename SparseMatrix<double>::InnerIterator it(laplace, i); it; ++it) {        
+            triplets.emplace_back(it.row(), it.col(), std::complex<double>(it.value(), 0));
         }
     }
 

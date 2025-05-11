@@ -1,4 +1,5 @@
 #include "solvers.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 /*
  * Compute the inverse of a sparse diagonal matrix.
@@ -28,7 +29,13 @@ SparseMatrix<double> sparseInverseDiagonal(SparseMatrix<double>& M) {
 double residual(const SparseMatrix<std::complex<double>>& A, const Vector<std::complex<double>>& x) {
 
     // TODO
-    return 0; // placeholder
+    // Compute the residual of Ax - λx, where x has unit norm and λ = x.Ax.
+    // Vector<std::complex<double>> y = x.normalized(); // get unit x
+    // Vector<std::complex<double>> v = A * y - (y.dot(A * y)) * y;
+    // return v.norm();
+    std::complex<double> lambda = x.adjoint() * A * x;
+
+    return (A * x - lambda * x).norm();
 }
 
 /*
@@ -38,7 +45,33 @@ double residual(const SparseMatrix<std::complex<double>>& A, const Vector<std::c
  * Returns: The smallest eigenvector of A.
  */
 Vector<std::complex<double>> solveInversePowerMethod(const SparseMatrix<std::complex<double>>& A) {
+    // double eps = 1e-10;
+    // Vector<std::complex<double>> x(A.cols());
+    // x.setOnes().normalize(); // initial guess
+    // double res = residual(A, x);
+    // while (res > eps) {
+    //
+    //     // TODO
+    //     // Compute the inverse of A and multiply it by x to get y.
+    //     Vector<std::complex<double>> y = A * x;
+    //     std::complex<double> mean = y.mean();
+    // }
 
-    // TODO
-    return Vector<std::complex<double>>::Zero(1);
+    //// TODO
+    // return Vector<std::complex<double>>::Zero(1);
+    Vector<std::complex<double>> y = Vector<std::complex<double>>::Random(A.rows()).normalized();
+    SparseMatrix<std::complex<double>> cpA = A;
+    geometrycentral::PositiveDefiniteSolver<std::complex<double>> solver(cpA);
+    Vector<std::complex<double>> ynext = y;
+    double eps = 1e-10;
+    double res = residual(cpA, y);
+    while (res > eps) {
+        solver.solve(ynext, y);
+        y = ynext - Vector<std::complex<double>>::Constant(ynext.size(), ynext.mean());
+        y.normalize();
+        res = residual(cpA, y);
+        ynext = y;       
+    }
+
+    return y;
 }
