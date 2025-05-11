@@ -625,7 +625,7 @@ SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
   //  derivative. Since we want the laplacian to take a 0-form, we'll first apply d0, then star1, then d1, then star2.
 
     // DEBUGGING
-    std::cout << "Building Laplace matrix..." << std::endl;
+    //std::cout << "Building Laplace matrix..." << std::endl;
 
     //SparseMatrix<double> d0Form = buildExteriorDerivative0Form();   // |E| x |V| matrix
     //SparseMatrix<double> star1Form = buildHodgeStar1Form();         // |E| x |E| matrix

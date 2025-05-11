@@ -1,5 +1,6 @@
 // Implement member functions for MeanCurvatureFlow class.
 #include "mean-curvature-flow.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 /* Constructor
  * Input: The surface mesh <inputMesh> and geometry <inputGeo>.
@@ -20,7 +21,10 @@ MeanCurvatureFlow::MeanCurvatureFlow(ManifoldSurfaceMesh* inputMesh, VertexPosit
 SparseMatrix<double> MeanCurvatureFlow::buildFlowOperator(const SparseMatrix<double>& M, double h) const {
 
     // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> L = geometry->laplaceMatrix();
+    SparseMatrix<double> H = M + h * L;
+    return H;
+   
 }
 
 /*
@@ -34,7 +38,26 @@ void MeanCurvatureFlow::integrate(double h) {
     // TODO
     // Note: Geometry Central has linear solvers: https://geometry-central.net/numerical/linear_solvers/
     // Note: Update positions via geometry->inputVertexPositions
+    SparseMatrix<double> M = geometry->massMatrix();
+    SparseMatrix<double> H = buildFlowOperator(M, h);
+
+    Eigen::MatrixXd currentVpos(mesh->nVertices(), 3);
+
     for (Vertex v : mesh->vertices()) {
-        geometry->inputVertexPositions[v] = geometry->inputVertexPositions[v]; // placeholder
+        Vector3 vPos = geometry->inputVertexPositions[v];
+        currentVpos.row(v.getIndex()) = Eigen::Vector3d(vPos[0], vPos[1], vPos[2]);
+    }
+
+    geometrycentral::PositiveDefiniteSolver<double> solver(H);
+    Eigen::MatrixXd nextVpos(mesh->nVertices(), 3);
+
+    for (Eigen::Index c = 0; c < 3; ++c) {
+        Vector<double> rhs = M * currentVpos.col(c);
+        nextVpos.col(c) = solver.solve(rhs);
+    }
+
+    for (Vertex v : mesh->vertices()) {
+        Eigen::Vector3d newPos = nextVpos.row(v.getIndex());
+        geometry->inputVertexPositions[v] = {newPos.x(), newPos.y(), newPos.z()};
     }
 }
