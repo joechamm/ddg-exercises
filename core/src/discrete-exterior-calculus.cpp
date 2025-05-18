@@ -32,6 +32,7 @@
 namespace geometrycentral {
 namespace surface {
 
+typedef Eigen::Triplet<double> Triplet;
 
 /*
  * Build Hodge operator on 0-forms.
@@ -42,8 +43,18 @@ namespace surface {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+     // Since the area of a vertex is 1, the diagonal elements are equal to the dual area of the vertex.
+    size_t nVertices = mesh.nVertices();
+    std::vector<Triplet> triplets(nVertices);
+    for (size_t i = 0; i < nVertices; ++i) {
+        Vertex v = mesh.vertex(i);
+        double dualArea = barycentricDualArea(v);
+        triplets[i] = Triplet(i, i, dualArea);
+    }
+
+    SparseMatrix<double> hodgeStar0Form(nVertices, nVertices);
+    hodgeStar0Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar0Form;
 }
 
 /*
@@ -54,8 +65,25 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    std::vector<Triplet> triplets;
+    for(Edge e : mesh.edges()) {
+        Halfedge he = e.halfedge();
+        double cotanHe = 0.0;
+        double cotanTwin = 0.0;
+        if (he.isInterior()) {
+            cotanHe = cotan(he);
+        }
+        if (he.twin().isInterior()) {
+            cotanTwin = cotan(he.twin());
+        }
+
+        double weight = 0.5 * (cotanHe + cotanTwin);
+        triplets.push_back(Triplet(e.getIndex(), e.getIndex(), weight));
+    }
+
+    SparseMatrix<double> hodgeStar1Form(mesh.nEdges(), mesh.nEdges());
+    hodgeStar1Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar1Form;
 }
 
 /*
@@ -66,8 +94,17 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    size_t nFaces = mesh.nFaces();
+    std::vector<Triplet> triplets(nFaces);
+    for (size_t i = 0; i < nFaces; ++i) {
+        Face f = mesh.face(i);
+        double area = faceArea(f);
+        triplets[i] = Triplet(i, i, 1.0 / area);
+    }
+
+    SparseMatrix<double> hodgeStar2Form(nFaces, nFaces);
+    hodgeStar2Form.setFromTriplets(triplets.begin(), triplets.end());
+    return hodgeStar2Form;
 }
 
 /*
@@ -78,8 +115,20 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    size_t nEdges = mesh.nEdges();
+    size_t nVertices = mesh.nVertices();
+    std::vector<Triplet> triplets;
+    for(size_t i = 0; i < nEdges; ++i) {
+        Halfedge he = mesh.edge(i).halfedge();
+        Vertex head = he.tipVertex();
+        Vertex tail = he.tailVertex();
+        triplets.push_back(Triplet(i, head.getIndex(), 1.0));
+        triplets.push_back(Triplet(i, tail.getIndex(), -1.0));
+    }
+
+    SparseMatrix<double> exteriorDerivative0Form(nEdges, nVertices);
+    exteriorDerivative0Form.setFromTriplets(triplets.begin(), triplets.end());
+    return exteriorDerivative0Form;
 }
 
 /*
@@ -90,8 +139,20 @@ SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() cons
  */
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative1Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    size_t nFaces = mesh.nFaces();
+    size_t nEdges = mesh.nEdges();
+    std::vector<Triplet> triplets;
+    for(size_t i = 0; i < nFaces; ++i) {
+        Face f = mesh.face(i);
+        for(Halfedge he : f.adjacentHalfedges()) {
+            double orientation = he.getIndex() % 2 == 0 ? 1.0 : -1.0;
+            triplets.push_back(Triplet(i, he.edge().getIndex(), orientation));
+        }
+    }
+
+    SparseMatrix<double> exteriorDerivative1Form(nFaces, nEdges);
+    exteriorDerivative1Form.setFromTriplets(triplets.begin(), triplets.end());
+    return exteriorDerivative1Form;
 }
 
 } // namespace surface

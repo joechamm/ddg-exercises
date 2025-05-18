@@ -79,9 +79,12 @@ double VertexPositionGeometry::totalArea() const {
  * Returns: The cotan of the angle opposite the given halfedge.
  */
 double VertexPositionGeometry::cotan(Halfedge he) const {
-
-    // TODO
-    return 0; // placeholder
+    Halfedge he_jk = he.next();
+    Vector3 e_kj = inputVertexPositions[he_jk.tailVertex()] - inputVertexPositions[he_jk.tipVertex()];
+    Vector3 e_ki = inputVertexPositions[he.tailVertex()] - inputVertexPositions[he_jk.tipVertex()];
+    double dot_product = dot(e_kj, e_ki);
+    double cross_productNorm = cross(e_kj, e_ki).norm();
+    return (dot_product / cross_productNorm);
 }
 
 /*
@@ -92,8 +95,11 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
  */
 double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
 
-    // TODO
-    return 0; // placeholder
+    double total = 0.0;
+    for(Face f : v.adjacentFaces()) {
+        total += faceArea(f);
+    }
+    return total / 3.0;
 }
 
 /*
@@ -105,8 +111,11 @@ double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
  */
 double VertexPositionGeometry::angle(Corner c) const {
 
-    // TODO
-    return 0; // placeholder
+    Halfedge he_ij = c.halfedge();
+    Halfedge he_jk = he_ij.next();
+    Vector3 u = (inputVertexPositions[he_ij.tipVertex()] - inputVertexPositions[he_ij.tailVertex()]).normalize();
+    Vector3 v = (inputVertexPositions[he_jk.tipVertex()] - inputVertexPositions[he_ij.tailVertex()]).normalize();
+    return clamp(std::acos(dot(u, v)), 0.0, PI);
 }
 
 /*
@@ -117,8 +126,13 @@ double VertexPositionGeometry::angle(Corner c) const {
  */
 double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
 
-    // TODO
-    return 0; // placeholder
+    Face f1 = he.face();
+    Face f2 = he.twin().face();
+    Vector3 n1 = faceNormal(f1);
+    Vector3 n2 = faceNormal(f2);
+    Vector3 unitEdge = unit(halfedgeVector(he));
+    Vector3 f1xf2 = cross(n1, n2);
+    return std::atan2(dot(unitEdge, f1xf2), dot(n1, n2));
 }
 
 /*
@@ -129,8 +143,16 @@ double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalEquallyWeighted(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    Vector3 normalSum = {0, 0, 0};
+    for (Face f : v.adjacentFaces()) {
+        Halfedge he_ij = f.halfedge();
+        Halfedge he_jk = he_ij.next();
+        Vector3 e_ij = inputVertexPositions[he_ij.tipVertex()] - inputVertexPositions[he_ij.tailVertex()];
+        Vector3 e_ik = inputVertexPositions[he_jk.tipVertex()] - inputVertexPositions[he_ij.tailVertex()];
+        normalSum += unit(cross(e_ij, e_ik));
+    }
+
+    return unit(normalSum);
 }
 
 /*
