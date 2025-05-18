@@ -21,19 +21,23 @@ void SimplicialComplexOperators::assignElementIndices() {
     geometry->requireEdgeIndices();
     geometry->requireFaceIndices();
 
-    // You can set the index field of a vertex via geometry->vertexIndices[v], where v is a Vertex object (or an
+ // You can set the index field of a vertex via geometry->vertexIndices[v], where v is a Vertex object (or an
     // integer). Similarly you can do edges and faces via geometry->edgeIndices, geometry->faceIndices, like so:
     size_t idx = 0;
     for (Vertex v : mesh->vertices()) {
         idx = geometry->vertexIndices[v];
+        std::cout << "Vertex index: " << idx << std::endl;
+        // Alternatively, you can use the following syntax to get the index of a vertex:
     }
 
     for (Edge e : mesh->edges()) {
         idx = geometry->edgeIndices[e];
+        std::cout << "Edge index: " << idx << std::endl;
     }
 
     for (Face f : mesh->faces()) {
         idx = geometry->faceIndices[f];
+        std::cout << "Face index: " << idx << std::endl;
     }
 
     // You can more easily get the indices of mesh elements using the function getIndex(), albeit less efficiently and
@@ -45,6 +49,7 @@ void SimplicialComplexOperators::assignElementIndices() {
 
     for (Vertex v : mesh->vertices()) {
         idx = v.getIndex(); // == geometry->vertexIndices[v])
+        std::cout << "Vertex index: " << idx << std::endl;
     }
 
     // Geometry Central already sets the indices for us, though, so this function is just here for demonstration.
@@ -59,22 +64,25 @@ void SimplicialComplexOperators::assignElementIndices() {
  */
 SparseMatrix<size_t> SimplicialComplexOperators::buildVertexEdgeAdjacencyMatrix() const {
 
-    // TODO
+     // TODO
     // Note: You can build an Eigen sparse matrix from triplets, then return it as a Geometry Central SparseMatrix.
     // See <https://eigen.tuxfamily.org/dox/group__TutorialSparse.html> for documentation.
-    size_t numVertices = mesh->nVertices();
+    size_t numVerts = mesh->nVertices();
     size_t numEdges = mesh->nEdges();
-    std::vector<Triplet> triplets;
-    for(Vertex v : mesh->vertices()) {
-        for(Edge e : v.adjacentEdges()) {
-            triplets.push_back(Triplet(e.getIndex(), v.getIndex(), 1));
+    std::vector<Eigen::Triplet<size_t>> triplets;
+    for (Vertex v : mesh->vertices()) {
+        size_t vIndex = v.getIndex();
+        for (Edge e : v.adjacentEdges()) {
+            size_t eIndex = e.getIndex();
+            // The vertex index is the column and the edge index is the row
+            triplets.push_back(Eigen::Triplet<size_t>(vIndex, eIndex, 1)); // Per Eigen documentation, the triplet constructor is (row, col, value), where value is 1 for non-zero entry in sparse matrix
         }
     }
 
-    SparseMatrix<size_t> A0(numEdges, numVertices);
-    A0.setFromTriplets(triplets.begin(), triplets.end());
-    A0.makeCompressed();
-    return A0;
+    // SparseMatrix constructor is (rows, cols) 
+    SparseMatrix<size_t> vertEdgeAdjacencyMatrix(numEdges, numVerts);
+    vertEdgeAdjacencyMatrix.setFromTriplets(triplets.begin(), triplets.end());
+    return vertEdgeAdjacencyMatrix;
 }
 
 /*
@@ -86,21 +94,22 @@ SparseMatrix<size_t> SimplicialComplexOperators::buildVertexEdgeAdjacencyMatrix(
 SparseMatrix<size_t> SimplicialComplexOperators::buildFaceEdgeAdjacencyMatrix() const {
 
     // TODO
-    // Note: You can build an Eigen sparse matrix from triplets, then return it as a Geometry Central SparseMatrix.
-    // See <https://eigen.tuxfamily.org/dox/group__TutorialSparse.html> for documentation.
-    size_t numFaces = mesh->nFaces();
     size_t numEdges = mesh->nEdges();
-    std::vector<Triplet> triplets;
-    for(Face f : mesh->faces()) {
-        for(Edge e : f.adjacentEdges()) {
-            triplets.push_back(Triplet(f.getIndex(), e.getIndex(), 1));
+    size_t numFaces = mesh->nFaces();
+    std::vector<Eigen::Triplet<size_t>> triplets;
+    for (Face f : mesh->faces()) {
+        size_t fIndex = f.getIndex();
+        for (Edge e : f.adjacentEdges()) {
+            size_t eIndex = e.getIndex();
+            // The triangle face index is the row and edge index is the column
+            triplets.push_back(Eigen::Triplet<size_t>(fIndex, eIndex, 1));  // Per Eigen documentation, the triplet constructor is (row, col, value), where value is 1 for non-zero entry in sparse matrix
         }
     }
 
-    SparseMatrix<size_t> A1(numFaces, numEdges);
-    A1.setFromTriplets(triplets.begin(), triplets.end());
-    A1.makeCompressed();
-    return A1;
+    // SparseMatrix constructor is (rows, cols)
+    SparseMatrix<size_t> faceEdgeAdjacencyMatrix(numFaces, numEdges);
+    faceEdgeAdjacencyMatrix.setFromTriplets(triplets.begin(), triplets.end());
+    return faceEdgeAdjacencyMatrix;
 }
 
 /*
