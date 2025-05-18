@@ -1,5 +1,6 @@
 // Implement member functions for ScalarPoissonProblem class.
 #include "scalar-poisson-problem.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 /* Constructor
  * Input: The surface mesh <inputMesh> and geometry <inputGeo>.
@@ -9,10 +10,9 @@ ScalarPoissonProblem::ScalarPoissonProblem(ManifoldSurfaceMesh* inputMesh, Verte
     mesh = inputMesh;
     geometry = inputGeo;
 
-    // TODO: Build member variables A (Laplace matrix), M (mass matrix), total area
-    this->A = identityMatrix<double>(1); // placeholder
-    this->M = identityMatrix<double>(1); // placeholder
-    this->totalArea = 0;                 // placeholder
+    this->A = geometry->laplaceMatrix();
+    this->M = geometry->massMatrix();
+    this->totalArea = geometry->totalArea();
 }
 
 /*
@@ -24,7 +24,19 @@ ScalarPoissonProblem::ScalarPoissonProblem(ManifoldSurfaceMesh* inputMesh, Verte
  */
 Vector<double> ScalarPoissonProblem::solve(const Vector<double>& rho) const {
 
-    // TODO
-    // Note: Geometry Central has linear solvers: https://geometry-central.net/numerical/linear_solvers/
-    return Vector<double>::Zero(rho.rows()); // placeholder
+    SparseMatrix<double> L = this->A;
+
+    double rhoBar = 0.0;
+    for(size_t i = 0; i < rho.rows(); i++) {
+        if(rho[i]) {
+            rhoBar += rho[i] * (this->M.coeff(i, i));
+        }
+    }
+
+    rhoBar /= (this->totalArea);
+
+    geometrycentral::PositiveDefiniteSolver<double> solver(L);
+    Vector<double> b = - (this->M * (rho - rhoBar * Vector<double>::Ones(L.rows())));
+    Vector<double> x = solver.solve(b);
+    return x;
 }
