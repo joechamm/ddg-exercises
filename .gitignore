@@ -1,5 +1,19 @@
 **/build/
-
+**/.vs/
+# Visual Studio Code
+# Visual Studio Code settings
+.vscode/
+# Visual Studio Code workspace storage
+.vscode-test/
+# Visual Studio Code extensions
+.vscode/extensions/
+# Visual Studio Code user data
+.vscode/user/
+# Visual Studio Code workspace settings
+# Don't track dependency files
+deps/geometry-central/
+deps/googletest/
+deps/polyscope/
 # Prerequisites
 *.d
 
