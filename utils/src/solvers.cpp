@@ -1,4 +1,5 @@
 #include "solvers.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 /*
  * Compute the inverse of a sparse diagonal matrix.
@@ -27,8 +28,9 @@ SparseMatrix<double> sparseInverseDiagonal(SparseMatrix<double>& M) {
  */
 double residual(const SparseMatrix<std::complex<double>>& A, const Vector<std::complex<double>>& x) {
 
-    // TODO
-    return 0; // placeholder
+    std::complex<double> lambda = x.adjoint() * A * x;
+
+    return (A * x - lambda * x).norm();
 }
 
 /*
@@ -39,6 +41,19 @@ double residual(const SparseMatrix<std::complex<double>>& A, const Vector<std::c
  */
 Vector<std::complex<double>> solveInversePowerMethod(const SparseMatrix<std::complex<double>>& A) {
 
-    // TODO
-    return Vector<std::complex<double>>::Zero(1);
+    Vector<std::complex<double>> y = Vector<std::complex<double>>::Random(A.rows()).normalized();
+    SparseMatrix<std::complex<double>> M = A;
+    geometrycentral::PositiveDefiniteSolver<std::complex<double>> solver(M);
+    Vector<std::complex<double>> ynext = y;
+    double eps = 1e-10;
+    double res = residual(M, y);
+    while(res > eps) {
+        solver.solve(ynext, y);
+        y = ynext - Vector<std::complex<double>>::Constant(ynext.size(), ynext.mean());
+        y.normalize();
+        res = residual(M, y);
+        ynext = y;
+    }
+
+    return y;
 }

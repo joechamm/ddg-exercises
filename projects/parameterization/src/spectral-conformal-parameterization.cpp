@@ -19,8 +19,23 @@ SpectralConformalParameterization::SpectralConformalParameterization(ManifoldSur
  */
 SparseMatrix<std::complex<double>> SpectralConformalParameterization::buildConformalEnergy() const {
 
-    // TODO
-    return identityMatrix<std::complex<double>>(1); // placeholder
+    SparseMatrix<std::complex<double>> ED = geometry->complexLaplaceMatrix();
+    size_t numBoundaryLoops = this->mesh->nBoundaryLoops();
+    size_t numVertices = this->mesh->nVertices();
+
+    std::vector<Eigen::Triplet<std::complex<double>>> triplets;
+    for(Face f : mesh->faces()) {
+        for(Halfedge he : f.adjacentHalfedges()) {
+            size_t i = he.tailVertex().getIndex();
+            size_t j = he.tipVertex().getIndex();
+            triplets.push_back(Eigen::Triplet<std::complex<double>>(i, j, std::complex<double>(0, -0.25)));
+            triplets.push_back(Eigen::Triplet<std::complex<double>>(j, i, std::complex<double>(0,  0.25)));
+        }
+    }
+
+    SparseMatrix<std::complex<double>> A(numVertices, numVertices);
+    A.setFromTriplets(triplets.begin(), triplets.end());
+    return 0.5 * ED - A;
 }
 
 
@@ -32,6 +47,12 @@ SparseMatrix<std::complex<double>> SpectralConformalParameterization::buildConfo
  */
 VertexData<Vector2> SpectralConformalParameterization::flatten() const {
 
-    // TODO
-    return VertexData<Vector2>(*mesh); // placeholder
+    SparseMatrix<std::complex<double>> EC = buildConformalEnergy();
+    Vector<std::complex<double>> x = solveInversePowerMethod(EC);
+    VertexData<Vector2> flattened = VertexData<Vector2>(*mesh);
+    for(Vertex v : mesh->vertices()) {
+        flattened[v] = Vector2::fromComplex(x[v.getIndex()]);
+    }
+
+    return flattened;
 }
