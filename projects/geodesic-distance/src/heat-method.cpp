@@ -13,9 +13,21 @@ HeatMethod::HeatMethod(ManifoldSurfaceMesh* surfaceMesh, VertexPositionGeometry*
     this->geometry = geo;
 
     // TODO: Build Laplace and flow matrices.
-    // Note: core/geometry.cpp has meanEdgeLength() function
-    this->A = identityMatrix<double>(1); // placeholder
-    this->F = identityMatrix<double>(1); // placeholder
+    // Build Laplace Matrix, A
+    this->A = geometry->laplaceMatrix();
+
+    // Build Mass Matrix, M
+    SparseMatrix<double> M = geometry->massMatrix();
+
+    // Timestep should be t = m * h^2, where m is a constant (according to video, m = 1 is good choice) and 
+    // h is average spacing between nodes (average edge length).
+
+    double h = geometry->meanEdgeLength();
+    double t = h * h; // m = 1
+
+    // Build Flow Matrix, F
+    // Trying F = M + tA
+    this->F = M + t * A;
 }
 
 /*
@@ -26,9 +38,28 @@ HeatMethod::HeatMethod(ManifoldSurfaceMesh* surfaceMesh, VertexPositionGeometry*
  * Returns: A MeshData container that stores a Vector3 per face.
  */
 FaceData<Vector3> HeatMethod::computeVectorField(const Vector<double>& u) const {
+    ManifoldSurfaceMesh& meshRef = *mesh;
+    FaceData<Vector3> X(meshRef, {0,0,0});
+    
+    // Per Heat Method Paper, section 3.2, the gradient of u for triangle face f is given by
+    //      ∇u = (1 / 2A_f) * Sum over i of u_i * (N x e_i)
+    // where A_f is the area of triangle face f, u_i is the value of u at vertex i, N is the face normal,
+    // and e_i is the (counter-clockwise oriented) edge opposite vertex i, and N x e_i is the cross product.
+    for(Face f : meshRef.faces()) {
+        Vector3 gradU = Vector3::zero();
+        Vector3 N = geometry->faceNormal(f);
+        double oneOver2A_f = (1.0 / (2.0 * geometry->faceArea(f)));
+        for(Halfedge he : f.adjacentHalfedges()) {
+            double u_i = u[he.vertex().getIndex()];
+            Vector3 e_i = geometry->inputVertexPositions[he.next().tipVertex()] - geometry->inputVertexPositions[he.tipVertex()];
+            gradU += (u_i * cross(N, e_i));
+        }
 
-    // TODO
-    return FaceData<Vector3>(*mesh, {0, 0, 0}); // placeholder
+        X[f] = - unit(gradU);
+    }
+
+
+    return X;
 }
 
 /*
