@@ -76,7 +76,7 @@ Vector<double> HodgeDecomposition::computeCoExactComponent(const Vector<double>&
     SparseMatrix<double> L = this->B; // Laplace matrix for the 2-form
     geometrycentral::SquareSolver<double> solver(L); // create a solver for the Laplace matrix
     Vector<double> beta = solver.solve(rhs); // solve the system
-    return d1 * beta; // return the coexact component 𝛿β of ω
+    return hodge2Inv * d1T * beta; // return the coexact component 𝛿β of ω
 }
 
 /*
