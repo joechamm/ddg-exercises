@@ -13,6 +13,19 @@ using namespace geometrycentral::surface;
 
 namespace {
 
+void dumpVectorToFile(const Vector<double>& vec, const std::string& filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file for writing: " + filename);
+    }
+    
+    file << "--- DEBUGGING OUTPUT ---\n";
+    file << "FILENAME: " << filename << "\n";
+    file << "SIZE: " << vec.size() << "\n";
+    file << vec << "\n";
+    file.close();
+}
+
 class HodgeDecompositionTest : public ::testing::Test {
 
   protected:
@@ -140,6 +153,16 @@ TEST_F(HodgeDecompositionTest, computeExactComponent) {
 TEST_F(HodgeDecompositionTest, computeCoExactComponent) {
 
     Vector<double> deltaBeta = HD.computeCoExactComponent(this->omega);
+    size_t dBrowcount = deltaBeta.rows();
+    size_t dBsolrowcount = deltaBeta_soln.rows();
+    std::cout << "deltaBeta rows: " << dBrowcount << ", deltaBeta_soln rows: " << dBsolrowcount << std::endl;
+    Vector<double> deltaBeta_diff = deltaBeta - deltaBeta_soln;
+
+    dumpVectorToFile(deltaBeta, "deltaBeta_debug.txt");
+    dumpVectorToFile(deltaBeta_soln, "deltaBeta_soln_debug.txt");
+    dumpVectorToFile(deltaBeta_diff, "deltaBeta_diff_debug.txt");
+    double deltaBeta_err = deltaBeta_diff.norm();
+    std::cout << "deltaBeta error: " << deltaBeta_err << std::endl;
     EXPECT_TRUE((deltaBeta - deltaBeta_soln).norm() < 1e-6);
 }
 
