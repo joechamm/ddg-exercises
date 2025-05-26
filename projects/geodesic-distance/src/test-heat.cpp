@@ -135,12 +135,30 @@ TEST_F(HeatMethodTest, computeVectorField) {
 TEST_F(HeatMethodTest, computeDivergence) {
 
     Vector<double> div = HM.computeDivergence(X_soln);
+    Vector<double> difference = div - div_soln;
+    double err = difference.norm();
+    std::cout << "Divergence error: " << err << std::endl;
+    if(err > 1e-5) {
+        std::cout << "Divergence: " << div.transpose() << std::endl;
+        std::cout << "Divergence solution: " << div_soln.transpose() << std::endl;
+        std::cout << "div - div_soln: " << difference.transpose() << std::endl;
+    }
     EXPECT_TRUE((div - div_soln).norm() < 1e-5);
 }
 
 TEST_F(HeatMethodTest, compute) {
 
     Vector<double> phi = HM.compute(delta);
+
+    Vector<double> diff = phi - phi_soln;
+    double err = diff.norm();
+    std::cout << "compute error: " << err << std::endl;
+    if(err > 1e-5) {
+        std::cout << "phi: " << phi.transpose() << std::endl;
+        std::cout << "phi_soln: " << phi_soln.transpose() << std::endl;
+        std::cout << "diff: " << diff.transpose() << std::endl;
+    }
+
     EXPECT_TRUE((phi - phi_soln).norm() < 1e-5);
 }
 

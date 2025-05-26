@@ -108,6 +108,77 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
 }
 
 /*
+ * Build inverse Hodge operator on 0-forms.
+ *
+ * Input:
+ * Returns: A sparse diagonal matrix representing the inverse Hodge operator that can be applied to discrete 0-forms.
+ */
+SparseMatrix<double> VertexPositionGeometry::buildInverseHodgeStar0Form() const {
+
+    size_t nVertices = mesh.nVertices();
+    std::vector<Triplet> triplets(nVertices);
+    for (size_t i = 0; i < nVertices; ++i) {
+        Vertex v = mesh.vertex(i);
+        double dualArea = barycentricDualArea(v);
+        triplets[i] = Triplet(i, i, 1.0 / dualArea);
+    }
+
+    SparseMatrix<double> inverseHodgeStar0Form(nVertices, nVertices);
+    inverseHodgeStar0Form.setFromTriplets(triplets.begin(), triplets.end());
+    return inverseHodgeStar0Form;
+}
+/*
+ * Build inverse Hodge operator on 1-forms.
+ *
+ * Input:
+ * Returns: A sparse diagonal matrix representing the inverse Hodge operator that can be applied to discrete 1-forms.
+ */
+SparseMatrix<double> VertexPositionGeometry::buildInverseHodgeStar1Form() const {
+
+    std::vector<Triplet> triplets;
+    for(Edge e : mesh.edges()) {
+        Halfedge he = e.halfedge();
+        double cotanHe = 0.0;
+        double cotanTwin = 0.0;
+        if (he.isInterior()) {
+            cotanHe = cotan(he);
+        }
+        if (he.twin().isInterior()) {
+            cotanTwin = cotan(he.twin());
+        }
+
+        double weight = 0.5 * (cotanHe + cotanTwin);
+        triplets.push_back(Triplet(e.getIndex(), e.getIndex(), 1.0 / weight));
+    }
+
+    SparseMatrix<double> inverseHodgeStar1Form(mesh.nEdges(), mesh.nEdges());
+    inverseHodgeStar1Form.setFromTriplets(triplets.begin(), triplets.end());
+    return inverseHodgeStar1Form;
+}
+
+/*
+ * Build inverse Hodge operator on 2-forms.
+ *
+ * Input:
+ * Returns: A sparse diagonal matrix representing the inverse Hodge operator that can be applied to discrete 2-forms.
+ */
+SparseMatrix<double> VertexPositionGeometry::buildInverseHodgeStar2Form() const {
+
+    size_t nFaces = mesh.nFaces();
+    std::vector<Triplet> triplets(nFaces);
+    for (size_t i = 0; i < nFaces; ++i) {
+        Face f = mesh.face(i);
+        double area = faceArea(f);
+        triplets[i] = Triplet(i, i, 1.0 / area);
+    }
+
+    SparseMatrix<double> inverseHodgeStar2Form(nFaces, nFaces);
+    inverseHodgeStar2Form.setFromTriplets(triplets.begin(), triplets.end());
+    return inverseHodgeStar2Form;
+}
+
+
+/*
  * Build exterior derivative on 0-forms.
  *
  * Input:
