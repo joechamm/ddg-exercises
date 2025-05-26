@@ -19,12 +19,16 @@ TrivialConnections::TrivialConnections(ManifoldSurfaceMesh* inputMesh, VertexPos
     HodgeDecomposition hodgeDecomp(mesh, geometry);
     HarmonicBases harmonicBases(mesh, geometry);
 
+    // Build harmonic bases and period matrix.
     this->bases = harmonicBases.compute(treeCotree.generators, hodgeDecomp);
     this->P = this->buildPeriodMatrix();
+    // 0-form Laplacian
     this->A = hodgeDecomp.A;
+    // 1-form Hodge star
     this->hodge1 = hodgeDecomp.hodge1;
+    // 0-form exterior derivative
     this->d0 = hodgeDecomp.d0;
-
+    // homology generators
     this->generators = treeCotree.generators;
     // TODO: Build harmonic bases
     //    this->bases; // placeholder;
@@ -88,7 +92,7 @@ bool TrivialConnections::satsifyGaussBonnet(const Vector<double>& singularity) c
  */
 Vector<double> TrivialConnections::computeCoExactComponent(const Vector<double>& singularity) const {
     Vector<double> u = Vector<double>::Zero(mesh->nVertices());
-    for (Vertex v : mesh->vertices()) {
+    /*for (Vertex v : mesh->vertices()) {
         size_t i = v.getIndex();
         double angleDefect = geometry->angleDefect(v);
         u[i] = 2.0 * M_PI * singularity[i] - angleDefect;
@@ -96,7 +100,19 @@ Vector<double> TrivialConnections::computeCoExactComponent(const Vector<double>&
 
     SparseMatrix<double> L = this->A;
     Vector<double> beta = solvePositiveDefinite(L, u);
-    return hodge1 * d0 * beta;
+    return hodge1 * d0 * beta;*/
+
+    // u = - K + 2π * singularity
+    for (Vertex v : mesh->vertices()) {
+        size_t i = v.getIndex();
+        double K_i = geometry->vertexGaussianCurvature(v);
+        u[i] = 2.0 * PI * singularity[i] - K_i;
+    }
+
+    SparseMatrix<double> d0T = this->d0.transpose();
+    geometrycentral::PositiveDefiniteSolver<double> solver(d0T);
+    Vector<double> deltaBeta = solver.solve(u);
+    return deltaBeta;
     // TODO
  //   return Vector<double>::Zero(1); // placeholder
 }
