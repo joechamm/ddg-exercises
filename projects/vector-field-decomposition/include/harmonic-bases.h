@@ -21,4 +21,6 @@ class HarmonicBases {
 
     std::vector<Vector<double>> compute(const std::vector<std::vector<Halfedge>>& generators,
                                         const HodgeDecomposition& hodgeDecomposition) const;
+
+    Halfedge sharedHalfedge(Face f, Face g) const;
 };

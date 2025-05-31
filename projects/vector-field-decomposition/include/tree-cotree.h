@@ -11,13 +11,13 @@ using namespace geometrycentral::surface;
 class TreeCotree {
 
   public:
-    ManifoldSurfaceMesh* mesh;
-    VertexPositionGeometry* geometry;
+    ManifoldSurfaceMesh*                mesh;
+    VertexPositionGeometry*             geometry;
 
-    std::map<Vertex, Vertex> vertexParent;
-    std::map<Face, Face> faceParent;
+    std::map<Vertex, Vertex>            vertexParent;
+    std::map<Face, Face>                faceParent;
 
-    std::vector<std::vector<Halfedge>> generators;
+    std::vector<std::vector<Halfedge>>  generators;
 
     TreeCotree() {}
     TreeCotree(ManifoldSurfaceMesh* inputMesh, VertexPositionGeometry* inputGeo);

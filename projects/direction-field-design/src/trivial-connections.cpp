@@ -5,6 +5,7 @@
 #include "harmonic-bases.h"
 #include "hodge-decomposition.h"
 
+typedef Eigen::Triplet<double> Triplet;
 /*
  * Constructor
  * Input: The surface mesh <inputMesh> and geometry <inputGeo>.
@@ -14,13 +15,23 @@ TrivialConnections::TrivialConnections(ManifoldSurfaceMesh* inputMesh, VertexPos
     mesh = inputMesh;
     geometry = inputGeo;
 
+    // Initialize the Hodge Decomposition
+    HodgeDecomposition hodgeDecomp(mesh, geometry);
+
+    // Initialize the Tree-Cotree structure and build the generators.
     TreeCotree treeCotree(mesh, geometry);
     treeCotree.buildGenerators();
-    HodgeDecomposition hodgeDecomp(mesh, geometry);
+
+    // Initialize the Harmonic Bases.
     HarmonicBases harmonicBases(mesh, geometry);
 
-    // Build harmonic bases and period matrix.
+    // Build the Harmonic Bases using the generators and Hodge Decomposition.
     this->bases = harmonicBases.compute(treeCotree.generators, hodgeDecomp);
+
+    // homology generators
+    this->generators = treeCotree.generators;
+
+    // Build the period matrix P.
     this->P = this->buildPeriodMatrix();
     // 0-form Laplacian
     this->A = hodgeDecomp.A;
@@ -28,8 +39,7 @@ TrivialConnections::TrivialConnections(ManifoldSurfaceMesh* inputMesh, VertexPos
     this->hodge1 = hodgeDecomp.hodge1;
     // 0-form exterior derivative
     this->d0 = hodgeDecomp.d0;
-    // homology generators
-    this->generators = treeCotree.generators;
+
     // TODO: Build harmonic bases
     //    this->bases; // placeholder;
     //
@@ -51,27 +61,55 @@ TrivialConnections::TrivialConnections(ManifoldSurfaceMesh* inputMesh, VertexPos
  * Returns: A sparse matrix represending the period matrix.
  */
 SparseMatrix<double> TrivialConnections::buildPeriodMatrix() const {
-    // TODO
     size_t nBases = this->bases.size();
-    SparseMatrix<double> P(nBases, nBases);
 
-    for (size_t i = 0; i < this->generators.size(); i++) {
-        for (size_t j = 0; j < this->bases.size(); j++) {
+    std::vector<Triplet> triplets;
+
+    for (size_t i = 0; i < nBases; i++) {
+        std::vector<Halfedge> generator = this->generators[i];
+
+        for (size_t j = 0; j < nBases; j++) {
+            Vector<double> basis = this->bases[j];
             double sum = 0.0;
-            for (Halfedge he : this->generators[i]) {
+
+            for (Halfedge he : generator) {
+                size_t k = he.edge().getIndex();
                 double orientation = (he == he.edge().halfedge()) ? 1.0 : -1.0;
-                sum += orientation * this->bases[j][he.edge().getIndex()];
+
+                sum += orientation * basis[k];
             }
 
-            P.coeffRef(i, j) = sum;
+            triplets.push_back(Triplet(i, j, sum));
         }
-    
     }
 
-    return P;
-    
-    //    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> periodMatrix(nBases, nBases);
+    periodMatrix.setFromTriplets(triplets.begin(), triplets.end());
+    return periodMatrix;
 }
+
+//SparseMatrix<double> TrivialConnections::buildPeriodMatrix() const {
+//    // TODO
+//    size_t nBases = this->bases.size();
+//    SparseMatrix<double> P(nBases, nBases);
+//
+//    for (size_t i = 0; i < this->generators.size(); i++) {
+//        for (size_t j = 0; j < this->bases.size(); j++) {
+//            double sum = 0.0;
+//            for (Halfedge he : this->generators[i]) {
+//                double orientation = (he == he.edge().halfedge()) ? 1.0 : -1.0;
+//                sum += orientation * this->bases[j][he.edge().getIndex()];
+//            }
+//
+//            P.coeffRef(i, j) = sum;
+//        }
+//    
+//    }
+//
+//    return P;
+//    
+//    //    return identityMatrix<double>(1); // placeholder
+//}
 
 /*
  * Determine if a mesh satisfies Gauss-Bonnet.
@@ -91,31 +129,47 @@ bool TrivialConnections::satsifyGaussBonnet(const Vector<double>& singularity) c
  * Returns: The coexact component 𝛿β.
  */
 Vector<double> TrivialConnections::computeCoExactComponent(const Vector<double>& singularity) const {
-    Vector<double> u = Vector<double>::Zero(mesh->nVertices());
-    /*for (Vertex v : mesh->vertices()) {
+    size_t nVerts = mesh->nVertices();
+    Vector<double> u = Vector<double>::Zero(nVerts);
+
+    for (Vertex v : mesh->vertices()) {
         size_t i = v.getIndex();
         double angleDefect = geometry->angleDefect(v);
-        u[i] = 2.0 * M_PI * singularity[i] - angleDefect;
+        u[i] = -angleDefect + 2.0 * PI * singularity[i];
     }
 
     SparseMatrix<double> L = this->A;
-    Vector<double> beta = solvePositiveDefinite(L, u);
-    return hodge1 * d0 * beta;*/
-
-    // u = - K + 2π * singularity
-    for (Vertex v : mesh->vertices()) {
-        size_t i = v.getIndex();
-        double K_i = geometry->vertexGaussianCurvature(v);
-        u[i] = 2.0 * PI * singularity[i] - K_i;
-    }
-
-    SparseMatrix<double> d0T = this->d0.transpose();
-    geometrycentral::PositiveDefiniteSolver<double> solver(d0T);
-    Vector<double> deltaBeta = solver.solve(u);
-    return deltaBeta;
-    // TODO
- //   return Vector<double>::Zero(1); // placeholder
+    geometrycentral::PositiveDefiniteSolver<double> solver(L);
+    Vector<double> betaTilde = solver.solve(u);
+    
+    return hodge1 * d0 * betaTilde; // Return the coexact component 𝛿β
 }
+//Vector<double> TrivialConnections::computeCoExactComponent(const Vector<double>& singularity) const {
+//    Vector<double> u = Vector<double>::Zero(mesh->nVertices());
+//    /*for (Vertex v : mesh->vertices()) {
+//        size_t i = v.getIndex();
+//        double angleDefect = geometry->angleDefect(v);
+//        u[i] = 2.0 * M_PI * singularity[i] - angleDefect;
+//    }
+//
+//    SparseMatrix<double> L = this->A;
+//    Vector<double> beta = solvePositiveDefinite(L, u);
+//    return hodge1 * d0 * beta;*/
+//
+//    // u = - K + 2π * singularity
+//    for (Vertex v : mesh->vertices()) {
+//        size_t i = v.getIndex();
+//        double K_i = geometry->vertexGaussianCurvature(v);
+//        u[i] = 2.0 * PI * singularity[i] - K_i;
+//    }
+//
+//    SparseMatrix<double> d0T = this->d0.transpose();
+//    geometrycentral::PositiveDefiniteSolver<double> solver(d0T);
+//    Vector<double> deltaBeta = solver.solve(u);
+//    return deltaBeta;
+//    // TODO
+// //   return Vector<double>::Zero(1); // placeholder
+//}
 
 
 /*
@@ -154,47 +208,95 @@ double TrivialConnections::transportNoRotation(Halfedge he, double alphaI) const
  * Returns: The harmonic component γ.
  */
 Vector<double> TrivialConnections::computeHarmonicComponent(const Vector<double>& deltaBeta) const {
-    Vector<double> gamma = Vector<double>::Zero(mesh->nEdges());
+    size_t nBases = this->bases.size();
+    size_t nEdges = mesh->nEdges();
 
-    if (this->bases.size() > 0) {
-    
-        Vector<double> v(this->generators.size());
-        for (size_t i = 0; i < this->generators.size(); i++) {
+    Vector<double> gamma = Vector<double>::Zero(nEdges);
+
+    if (nBases > 0) {
+        SparseMatrix<double> P = this->P;
+        geometrycentral::SquareSolver<double> solver(P);
+
+        // construct right hand side
+        Vector<double> rhs = Vector<double>::Zero(nBases);
+        for (size_t i = 0; i < nBases; i++) {
+            std::vector<Halfedge> generator = this->generators[i];
             double sum = 0.0;
-            for (Halfedge he : this->generators[i]) {
-                double orientation = (he == he.edge().halfedge() ? 1.0 : -1.0);
+
+            for (Halfedge he : generator) {
+                size_t k = he.edge().getIndex();
+                double orientation = (he == he.edge().halfedge()) ? 1.0 : -1.0;
+
                 sum += transportNoRotation(he, 0.0);
-                sum -= orientation * deltaBeta[he.edge().getIndex()];                
+                sum -= orientation * deltaBeta[k];
             }
-            v[i] = sum - 2.0 * M_PI * std::floor(sum / (2.0 * M_PI));
+
+            // Normalize the sum to lie between -π and π
+            while (sum < -PI) {
+                sum += 2.0 * PI;
+            }
+            while (sum >= PI) {
+                sum -= 2.0 * PI;
+            }
+
+            rhs[i] = sum;
         }
 
-        SparseMatrix<double> PeriodMatrix = this->P;
+        // Solve the system Pz = rhs
+        Vector<double> z = solver.solve(rhs);
 
-        geometrycentral::SquareSolver<double> solver(PeriodMatrix);
-        Vector<double> z = solver.solve(v);
-
-        SparseMatrix<double> d1 = geometry->buildExteriorDerivative1Form();
-        SparseMatrix<double> hodge1 = geometry->buildHodgeStar1Form();
-        SparseMatrix<double> d0T = geometry->buildExteriorDerivative0Form().transpose();
-        for (size_t i = 0; i < this->bases.size(); i++) {
-            gamma += z[i] * bases[i];
-
-            Vector<double> dGamma = d1 * bases[i];
-            Vector<double> deltaGamma = d0T * hodge1 * bases[i];
-            if (dGamma.norm() > 1e-5) {
-                std::cout << "dGamma.norm() = " << dGamma.norm() << std::endl;
-            }
-
-            if (deltaGamma.norm() > 1e-5) {
-                std::cout << "deltaGamma.norm() = " << deltaGamma.norm() << std::endl;
-            }
+        // Compute gamma
+        for (size_t i = 0; i < nBases; i++) {
+            Vector<double> basis = this->bases[i];
+            gamma += z[i] * basis;        
         }
     }
-    // TODO
-    //return Vector<double>::Zero(1); // placeholder
+
     return gamma;
 }
+
+//Vector<double> TrivialConnections::computeHarmonicComponent(const Vector<double>& deltaBeta) const {
+//    Vector<double> gamma = Vector<double>::Zero(mesh->nEdges());
+//
+//    if (this->bases.size() > 0) {
+//    
+//        Vector<double> v(this->generators.size());
+//        for (size_t i = 0; i < this->generators.size(); i++) {
+//            double sum = 0.0;
+//            for (Halfedge he : this->generators[i]) {
+//                double orientation = (he == he.edge().halfedge() ? 1.0 : -1.0);
+//                sum += transportNoRotation(he, 0.0);
+//                sum -= orientation * deltaBeta[he.edge().getIndex()];                
+//            }
+//            v[i] = sum - 2.0 * M_PI * std::floor(sum / (2.0 * M_PI));
+//        }
+//
+//        SparseMatrix<double> PeriodMatrix = this->P;
+//
+//        geometrycentral::SquareSolver<double> solver(PeriodMatrix);
+//        Vector<double> z = solver.solve(v);
+//
+//        SparseMatrix<double> d1 = geometry->buildExteriorDerivative1Form();
+//        SparseMatrix<double> hodge1 = geometry->buildHodgeStar1Form();
+//        SparseMatrix<double> d0T = geometry->buildExteriorDerivative0Form().transpose();
+//        for (size_t i = 0; i < this->bases.size(); i++) {
+//            gamma += z[i] * bases[i];
+//
+//            Vector<double> dGamma = d1 * bases[i];
+//            Vector<double> deltaGamma = d0T * hodge1 * bases[i];
+//            if (dGamma.norm() > 1e-5) {
+//                std::cout << "dGamma.norm() = " << dGamma.norm() << std::endl;
+//            }
+//
+//            if (deltaGamma.norm() > 1e-5) {
+//                std::cout << "deltaGamma.norm() = " << deltaGamma.norm() << std::endl;
+//            }
+//        }
+//    }
+//    // TODO
+//    //return Vector<double>::Zero(1); // placeholder
+//    return gamma;
+//}
 
 /*
  * Compute the dual 1-form connections φ = 𝛿β + γ.
